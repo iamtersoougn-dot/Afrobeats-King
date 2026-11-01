@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/* Afrobeats King palette: Lagos after dark. Neon on deep purple, gold for money. */
+:root {
+  --night: #120a1f;
+  --plum: #241238;
+  --plum-2: #33194f;
+  --neon: #ff3d8b;
+  --gold: #ffc23d;
+  --mint: #2ee6a6;
+  --ice: #8fd3ff;
+  --text: #f4eefc;
+  --muted: #b3a3cc;
+}
+
+@theme inline {
+  --color-night: var(--night);
+  --color-plum: var(--plum);
+  --color-plum-2: var(--plum-2);
+  --color-neon: var(--neon);
+  --color-gold: var(--gold);
+  --color-mint: var(--mint);
+  --color-ice: var(--ice);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+}
+
+html,
+body {
+  background: var(--night);
+  color: var(--text);
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
