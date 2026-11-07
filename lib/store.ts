@@ -320,8 +320,10 @@ export const useGame = create<State>()(
           progress(id, id === "release" ? SEASON_PTS.release : SEASON_PTS.action);
           const a = actionById(id)!;
           if (res.toast) get().toast(res.toast);
-          if (id === "release") sfx.drop();
-          else sfx.tap();
+          if (id === "release") {
+            sfx.drop();
+            analytics("release", { week: get().player?.week });
+          } else sfx.tap();
           const p = get().player!;
           const skip = quick && canQuick({ uses: p.uses ?? {}, routines: p.routines ?? [] }, id, ROUTINES);
           // the tutorial needs the screen clear, so it shows the result line without the scene
@@ -379,16 +381,18 @@ export const useGame = create<State>()(
           let lvlUp = false;
           let firstNo1 = false;
           let sold = 0;
+          let charted = false;
           mutate((p) => {
             const lv = p.level;
             const no1 = p.stats.no1;
             const shows = p.stats.shows;
-            const charted = p.stats.charted;
+            const charted0 = p.stats.charted;
             // random events wait until the tutorial is over
             endWeek(p, { events: get().meta.tutorialDone && !touring });
             lvlUp = p.level > lv;
             firstNo1 = no1 === 0 && p.stats.no1 > 0;
-            sold = (p.stats.shows - shows) * SEASON_PTS.show + (p.stats.charted - charted) * SEASON_PTS.chart + (p.stats.no1 - no1) * SEASON_PTS.no1;
+            sold = (p.stats.shows - shows) * SEASON_PTS.show + (p.stats.charted - charted0) * SEASON_PTS.chart + (p.stats.no1 - no1) * SEASON_PTS.no1;
+            charted = charted0 === 0 && p.stats.charted > 0;
           });
           const p = get().player!;
           progress("endweek", SEASON_PTS.action + sold);
@@ -399,6 +403,7 @@ export const useGame = create<State>()(
             analytics("level", { level: p.level });
           }
           if (firstNo1) offer("no1");
+          if (charted) analytics("charted", { week: p.week });
           if (p.cash < 0) offer("sapa");
           if (p.ended) analytics("life_end", { kind: p.ended.kind, week: p.week });
           // no popups while the tutorial is running: the recap waits in the feed

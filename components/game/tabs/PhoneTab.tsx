@@ -9,7 +9,7 @@ import { ACHIEVEMENTS, questsFor, sortTasks } from "@/lib/game/meta";
 import { CAMPS, SEASON_WEEK_CAP, SEASON_WIN_GOLD, lagosDay, seasonWeek, weekEndsAt } from "@/lib/daily";
 import { DAILY_REWARDS } from "@/lib/products";
 import { SEASON_TIERS, XP_PER_TIER, currentSeason, freeReward, premiumReward } from "@/lib/season";
-import { SPONSORED_SONGS } from "@/lib/sponsors";
+import { SPONSORED_SONGS, noteAdTap, noteAdView } from "@/lib/sponsors";
 import { useNow } from "@/components/world/useEnv";
 import { Bar, Chip, Empty, Section, Segments } from "../ui";
 
@@ -42,6 +42,7 @@ export default function PhoneTab() {
 
 function Feed() {
   const p = useGame((s) => s.player)!;
+  useEffect(() => SPONSORED_SONGS.slice(0, 3).forEach((s) => noteAdView(s.id)), []);
   const g = GENRES[p.trend.genre];
   return (
     <div>
@@ -57,7 +58,7 @@ function Feed() {
         <Section title="New music">
           <div className="grid gap-2">
             {SPONSORED_SONGS.slice(0, 3).map((s) => (
-              <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer sponsored" className="flex min-h-[56px] items-center gap-3 rounded-2xl bg-night-3 px-3 py-2">
+              <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer sponsored" onClick={() => noteAdTap(s.id)} className="flex min-h-[56px] items-center gap-3 rounded-2xl bg-night-3 px-3 py-2">
                 <span className="text-2xl">🎵</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14px] font-bold">{s.title}</span>

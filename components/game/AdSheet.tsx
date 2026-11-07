@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useGame } from "@/lib/store";
 import { showRewardedAd } from "@/lib/ads";
 import { AD_GOLD, MAX_ADS_PER_DAY } from "@/lib/products";
-import { billboardFor, SPONSORED_SONGS } from "@/lib/sponsors";
+import { billboardFor, noteAdTap, noteAdView, SPONSORED_SONGS } from "@/lib/sponsors";
 import { lagosDay } from "@/lib/daily";
 import { Sheet } from "./ui";
 
@@ -47,6 +47,9 @@ export default function AdSheet({ onClose }: { onClose: () => void }) {
   };
 
   const song = SPONSORED_SONGS[used % Math.max(1, SPONSORED_SONGS.length)];
+  useEffect(() => {
+    if (stage === "house" && song) noteAdView(song.id);
+  }, [stage, song]);
   const board = billboardFor("radio");
   if (tour !== null) return null;
   return (
@@ -71,7 +74,7 @@ export default function AdSheet({ onClose }: { onClose: () => void }) {
                 <p className="font-display mt-1 text-[18px] font-bold">{song.title}</p>
                 <p className="text-[14px]">{song.artist}</p>
                 {song.blurb && <p className="mt-1 text-[13px] text-lilac">{song.blurb}</p>}
-                <a className="btn btn-ghost mt-3 w-full" href={song.url} target="_blank" rel="noopener noreferrer sponsored">
+                <a className="btn btn-ghost mt-3 w-full" href={song.url} target="_blank" rel="noopener noreferrer sponsored" onClick={() => noteAdTap(song.id)}>
                   Listen on the artist&apos;s page
                 </a>
               </>

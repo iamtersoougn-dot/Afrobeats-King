@@ -7,7 +7,7 @@
 import { useEffect, useMemo } from "react";
 import { LEVELS, PLACES, type Place } from "@/lib/game/data";
 import type { PlaceId, Player } from "@/lib/game/types";
-import { billboardFor } from "@/lib/sponsors";
+import { billboardFor, noteAdView } from "@/lib/sponsors";
 import { Filler, Palm, PlaceBuilding } from "./buildings";
 import Figure, { toFigLook } from "./Figure";
 import { usePanZoom } from "./usePanZoom";
@@ -121,7 +121,7 @@ export default function WorldView({ p, counts, onPlace, onLandmark, here, others
   };
 
   return (
-    <div ref={box} className={`relative h-full w-full touch-none select-none overflow-hidden ${smooth ? "smooth" : ""}`} style={{ background: night ? "#0d0820" : "#86b9e6" }} {...cam.handlers} aria-label="Map of Lagos">
+    <div ref={box} className={`relative h-full w-full touch-none select-none overflow-hidden ${smooth ? "smooth" : ""}`} style={{ background: night ? "#0d2547" : "#3d8fc7" }} {...cam.handlers} aria-label="Map of Lagos">
       <div className={`world-cam absolute left-0 top-0 origin-top-left ${cam.animate ? "anim" : ""}`} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k || 0.0001})`, width: WORLD_W, height: WORLD_H, opacity: ready ? 1 : 0 }}>
         <svg width={WORLD_W} height={WORLD_H} viewBox={`0 0 ${WORLD_W} ${WORLD_H}`} className="block">
           {/* land, lagoon, sea */}
@@ -315,6 +315,7 @@ function Danfo({ path, dur, delay, small }: { path: string; dur: number; delay: 
 
 function BillboardSign({ slot, x, y, night, onTap }: { slot: "bridge" | "sanctuary"; x: number; y: number; night: boolean; onTap: (e: React.MouseEvent) => void }) {
   const b = billboardFor(slot);
+  useEffect(() => noteAdView(b.id), [b.id]);
   return (
     <g onClick={onTap} style={{ cursor: "pointer" }} role="button" aria-label={`Billboard: ${b.brand}`}>
       <rect x={x - 3} y={y - 10} width="6" height="60" fill="#5a5296" />

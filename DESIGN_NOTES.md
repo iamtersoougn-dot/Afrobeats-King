@@ -2,232 +2,197 @@
 
 > **Read this first in every new work session.** It holds the game's rules, how the code is laid out, the decisions made so far, and what's next.
 > **Update it at the end of every session:** add new decisions and refresh "Current status" and "What's next".
-> Built on the "Naija life-sim kit" from Campus to Camp (`iamtersoougn-dot/campus-to-camp`) and Japa Journey (`iamtersoougn-dot/japa-journey`). When in doubt, copy how those repos solved it.
+> Built on the "Naija life-sim kit" from Campus to Camp (`iamtersoougn-dot/campus-to-camp`) and Japa Journey (`iamtersoougn-dot/japa-journey`). Those repos are the reference for **systems and code patterns only**, never for names, places, art or story.
 
-Last updated: 2026-11-01 · Version: v0.2 (design + starting rules, not playable yet)
-Working titles: **Afrobeats King** (main), "Afrobeats Tycoon" (alt / store listing)
+Last updated: 2026-11-07 · Version: **v0.3.0** (playable: core loop, world, multiplayer, retention, money)
+Repo: `iamtersoougn-dot/Afrobeats-King` (main) · Hosting: Vercel free plan for testing (owner decides when to move to a paid/commercial host)
 
 ---
 
 ## 1. The game in one paragraph
 
-A Nigerian music-label life-sim played in the browser. You start in Lagos with either a rich kid's home studio or a hungry producer's laptop. Sign artists, book studio time, drop singles, shoot videos, chase the week's ClipTok trend, book shows up to the 4,000-cap Sanctuary in Ikeja and the Lagoon Dome, dodge (or use) payola and streaming farms, keep moody artists happy and survive contract wahala. Grow from **Bedroom** to **Continental** label in 3 in-game years (156 weeks), then keep playing for the yearly Golden Mic Awards. Inspired by Lagos Life; built to beat it on fun, depth, polish and revenue per player, with near-zero server cost.
+A Nigerian music-label life-sim played in the browser. You start in Lagos with either a rich kid's home studio or a hungry producer's laptop. Sign artists at the open-mic bar, record and release singles, push them on Lagoon FM and ClipTok, shoot videos, book shows at The Sanctuary, dodge (or use) payola and streaming farms, keep moody artists happy and survive contract wahala. Grow from **Bedroom** to **Continental** label in 3 in-game years (156 weeks). Everything is fictional: no real artists, songs or lyrics. Inspired by Lagos Life; built to beat it on fun, depth, polish and revenue per player, with near-zero server cost.
 
 ## 2. Core loop
 
-1. Read the **objective banner** (always visible under the stats, with a deadline chip). Tap it to jump to the right place.
-2. Open the **Map**, tap a place, tap an action. Every action costs ⚡ energy; some cost cash; studio and shoots also take **days** of the week.
-3. **End the week** (Friday is release day): streams pay out, the chart updates, bills and obligations come due, artist moods move, one event may fire.
-4. Hit milestones to level the label up. New places, artist slots and venues unlock per level.
-
-One turn = 1 week. A week has **⚡ 100 energy** and **5 work days** (Mon–Fri). Most actions cost energy only; studio sessions, video shoots and shows also cost days. Weekends are for shows.
+1. Read the **objective banner** (yellow "danfo board" under the stats). It shows ONE goal and a deadline chip. Tap it to go there.
+2. **Home is the Lagos map.** Tap a place: the camera flies there and its sheet opens (scene, bills payable here, actions).
+3. Each action costs ⚡ energy (100 a week); studio work and shoots also cost 📅 days (5 a week). After an action a short scene plays with the result line and every change.
+4. **End week**: routines run, streams pay, the chart moves, shows happen, bills and deadlines are checked, artist moods move, the calendar advances, one event may fire (never during the tutorial).
+5. Meet the next level's requirements to grow the label. Levels unlock artist slots and places.
 
 ## 3. Starting profiles
 
 | | Rich kid with a studio | Hungry producer with a laptop |
 | --- | --- | --- |
 | Cash | ₦2,500,000 | ₦60,000 |
-| Studio | Home studio (level 2, no rent) | Laptop (level 0): must rent sessions |
-| Ear (production skill) | 15 | 45 |
-| Street cred | 5 | 35 |
+| Studio | Home studio (level 2, free sessions) | Laptop (level 0); pro sessions ₦25k at Surulere Sound |
+| Ear / Street cred | 15 / 5 | 45 / 35 |
 | Hype / Rep | 10 / 15 | 5 / 5 |
-| Twist | "Daddy's money" ₦150k/week allowance that **stops at week 12**; snobbish: underground artists' loyalty −10 | Can sell beats at Yaba Hub (cash on day 1); first signing must be an unknown |
-| Difficulty | Easy start, slower ear growth | Hard start, faster ear growth (+25%) |
+| Twist | ₦120k a week from Daddy until week 8 | Ear grows 25% faster; week 1's first act is always affordable |
 
 ## 4. Stats
 
-**Player:** 💰 Cash (₦), ⚡ Energy (0–100, refills weekly), 🔥 Hype (label buzz 0–100, decays 4%/week), ⭐ Rep (industry respect 0–100, slow), 🎧 Ear (production skill 0–100, diminishing returns), 🧢 Street cred (0–100, unlocks street-hop artists and Agege/Mushin gigs), 🪙 Gold (premium, vanity and convenience only). Hidden: 🚩 Heat (risk from payola/farms, 0–100, decays 3/week).
+**Player:** 💰 Cash, ⚡ Energy (0–100, refills weekly), 🔥 Hype (buzz, fades 10% a week, gains halve above 50 and quarter above 80), ⭐ Rep (respect, slow, gains shrink above 60), 🎧 Ear (skill, diminishing), 🧢 Street cred (DJ pay, street acts' loyalty), 🪙 Gold (kept across labels; looks and small extras only). Hidden 🚩 Heat (payola/farms; exposés).
 
-**Artist:** Talent, Star power (fans 0–100), Ego, Loyalty, Mood, Genre (Afrobeats, Amapiano, Street-hop, Afro-R&B, Alté, Afro-gospel, Afro-drill), contract (advance, royalty split, singles owed, weeks left, buyout clause).
+**Artist:** talent, fans (star), ego, loyalty, mood, genre (Afrobeats, Amapiano, Street-hop, Afro-R&B, Alté, Afro-gospel, Afro-drill), advance (half on signing, rest at the Law office within 3 weeks), royalty share. Fans grow from the best-charting song each week (+1.2 Top 10, +0.7 Top 25, +0.3 charting) and fade 1.5% a week; Top 10 and No. 1 give one-off boosts.
 
-**Song:** Quality (studio level + ear + artist talent + sessions, with diminishing returns), Genre, Release week, Weekly streams, Peak chart position, Video yes/no, Promo points, Age (weeks since release).
+**Song:** 3 sessions (quality approaches a ceiling set by talent, ear and studio), then mix & master, then release on Friday. Artists need **3 weeks between singles**.
 
-**Label level:** Bedroom → Studio → Indie → Major → Continental. Each needs a mix of cash, chart results and shows (see §8). Unlocks places, artist slots (1/2/4/6/8) and venues.
+**Label levels** (`lib/game/data.ts` LEVELS):
+
+| Level | Slots | Needs |
+| --- | --- | --- |
+| Bedroom | 1 | — |
+| Studio | 2 | 1 artist, a Top 50 song, ₦1m net worth. Unlocks the creator house and The Sanctuary |
+| Indie | 4 | 2 artists, a Top 10 song, ₦3m |
+| Major | 6 | 3 artists, 2 No. 1s, ₦30m |
+| Continental | 8 | 4 artists, 4 No. 1s, ₦100m (the win) |
 
 ## 5. Music model (seeded, no server, no loophole)
 
-- Every run has a **seed**. NPC songs (~40 per week, from fictional rival labels) and the weekly **ClipTok trend** (a genre + a dance tag, lasts 3–5 weeks) come from the seed, never from other players.
-- **Weekly streams** of a song = `base(quality) × starPower × (1 + hype/100) × trendFit × videoBoost × promo × decay(age) × noise(seed, week, songId)`, capped. Decay halves streams about every 5 weeks; a viral roll can flip a song once.
-- **Chart:** your released songs + NPC songs ranked by weekly streams → Top 50. No. 1 = big hype and rep.
-- **Income per week:** streams × ₦0.9 per 1,000 (label share after artist royalty), radio spins, shows, brand deals, merch, sync deals (rare).
-- A shared weekly **chart race** across players comes later and is server-checked (§10).
+- Every run has a seed. ~46 rival songs (fictional labels, peaks ₦15k–1.1M streams, log-spread) and the ClipTok trend (a genre + tag for 3–5 weeks) come from the seed, never from other players.
+- Weekly streams = `(600 + q²·16) × (0.4 + fans/100) × (1 + hype/250) × trend 1.35 × (1 + √promo/20) × video 1.2 × decay 0.84/week × noise`, capped at 2.5M. One viral roll per song (×2.6), likelier on-trend.
+- Label income = streams / 1000 × ₦800 × (1 − artist royalty).
+- Shows at The Sanctuary: ₦400k deposit, ₦800k balance due by show week (unpaid = cancelled, deposit lost); fill = 8% + fans·0.6% + hype·0.3% (+5% with a Top 10); label keeps 35% of 4,000 × ₦3,000 × season demand. One show at a time, 6 weeks apart.
+- Music video (creator house, Studio level): ₦250k, +20% streams for that single.
 
-## 6. Places (Lagos map, fictional venues)
+## 6. Places (fictional venues, `lib/game/data.ts` PLACES)
 
-| Place | What you do there | Unlock |
-| --- | --- | --- |
-| 🏠 Your base (bedroom / home studio) | Make beats (ear), rest, plan release | Start |
-| 🎚️ Surulere Sound (rent studio) | Record sessions (₦ per session), mix & master | Start |
-| 💻 Yaba Hub | Sell beats, mix for others (earn), learn plugins | Start |
-| 🎤 Open-mic bar, Surulere | Scout & sign unknown artists, DJ for cash | Start |
-| 📻 Lagoon FM, Ikeja | Radio push, interviews; payola offers show up here | Start |
-| 📱 Lekki creator house | ClipTok challenge, influencer push | Studio |
-| 🎬 Ikoyi video set | Shoot videos (deposit, then balance) | Studio |
-| 🏛️ The Sanctuary, Ikeja | Book shows (deposit by date), virtual concerts | Indie |
-| ⚖️ Law office, VI | Sign/renegotiate contracts, settle disputes | Start |
-| 🏦 Bank & quick-loan shop | Loans (honest bank vs. satirical predatory loan app) | Start |
-| 🍲 Mama Put | Food, energy, gossip (hints) | Start |
-| 🏟️ Lagoon Dome / ✈️ Tour desk | Arena shows; Accra, Nairobi, Jo'burg tours | Major |
+Your base (beats, record, mix, release, rest) · Surulere Sound (pro sessions, pro mix, lease a room) · Yaba Hub (sell beats, mix for others, plugins) · Open-mic bar (sign acts, DJ, network) · Lagoon FM (radio push, interview, payola) · Mama Put (food, gist about the next trend) · Law office (advances) · Bank (loans) · Creator house (ClipTok challenge, music video; Studio level) · The Sanctuary (shows; Studio level). Landmarks: Third Mainland Bridge (tap for a fact), Lagoon FM mast, two paid billboard slots.
 
-## 7. Obligations (real deadlines, paid at a map place)
+## 7. Obligations (real deadlines, paid at a place)
 
-| Obligation | When | Where | If missed |
+| Obligation | When | Where | If missed (Chill mode: reminder only) |
 | --- | --- | --- | --- |
-| Studio rent (once you lease a room) | Every 4 weeks | Landlord / Surulere Sound | Late fee 10%, locked out after 2 weeks |
-| Artist advance instalments | Weeks 1 and 4 after signing | Law office | Artist loyalty −20, may walk |
-| Release date (master to distributor) | Thursday before the Friday you booked | Your base → distributor | Miss Friday, pay re-slot fee, hype −5 |
-| Video balance | 2 weeks after shoot | Ikoyi video set | Video withheld |
-| Show deposit | 3 weeks before the show | The Sanctuary | Show cancelled, deposit lost, rep −8 |
-| Loan repayment | Weekly | Bank | Bank: interest; loan app: "shame messages" event chain, rep hit |
+| Advance balance | 3 weeks after signing | Law office | Loyalty and mood fall; artist walks after 2 weeks |
+| Release a single with each artist | 8 weeks after signing, then every 4 | Your base | Mood and loyalty fall, hype −3 |
+| Studio rent (if leased) | Every 4 weeks | Surulere Sound | +10% late fee, then locked out |
+| Loan repayment | Weekly | Bank | Interest and rep hit |
+| Show balance | By show week | The Sanctuary | Show cancelled, deposit lost, rep hit |
 
-All open obligations show as deadline chips ("This week", "By week 6", "Overdue") and feed the objective banner.
+Broke for 4 weeks in a row = the label folds (not in Chill mode).
 
-## 8. Objective banner (one goal, always affordable)
+## 8. Objective banner (`lib/game/goals.ts`)
 
-Priority list (first match wins), in `lib/game/goals.ts`:
+Priority: pending event → overdue bill → bill due this week → out of energy/days → sign first artist → record/mix/release the song in progress → push a fresh single → start the next single (release deadlines) → upcoming show balance → next level's first unmet requirement. **Always doable:** if a bill or signing is unaffordable it sends you to earn first (sell beats → mix for artists → DJ → end the week), and it only suggests paid studio time when that still leaves ₦50k plus bills due in the next 3 weeks. The balance bot fails if the banner ever points at a locked action.
 
-1. Pending event choice.
-2. Overdue obligation.
-3. Obligation due this week. **If cash < amount → "Earn ₦X: sell beats at Yaba Hub / DJ at the bar" instead.**
-4. Energy < 10 → "End the week".
-5. No artist signed → "Sign your first artist at the open-mic bar".
-6. Song in progress → "Record session 2/3 at Surulere Sound".
-7. Song mastered, no release date → "Book a Friday release".
-8. Released song with no promo → "Push it on Lagoon FM or ClipTok".
-9. Next label-level requirement (with progress bar).
+## 9. Wahala (`lib/game/events.ts`)
 
-Level requirements (tuned by the balance bot): Studio = ₦1.5M net worth + 1 song in Top 50; Indie = 3 artists + a Top 10 + one Sanctuary show; Major = a No. 1 + sell out the Sanctuary + ₦25M; Continental = 3-city tour + a Golden Mic award + ₦150M.
+11 events: grid outage, royalty demand, beef on X, streaming-farm offer (45% chance of being caught: pulled 8 weeks, big rep hit), owambe DJ gig, paid blogger, Third Mainland traffic, rival poaching (buyout), uncleared sample, studio vibes, collapse from exhaustion. Seasons change their odds; Chill mode makes setbacks rarer and turns off the farm and collapse events. Payola adds heat; high heat can trigger an exposé.
 
-## 9. Wahala (events and systems)
+## 10. Economy guards
 
-- **Artist ego:** moods drop with low royalty, no releases, rival success. Ego events: demands a bigger cut, wants a feature with a rival, beefs on X (hype up, rep down), skips a show, threatens to leave. Resolve with money, a release, talking (charm check) or the law office.
-- **Contract wahala:** rival labels poach (buyout offer), an artist's ex-manager claims a cut, a sample isn't cleared (song pulled or settlement).
-- **Payola:** DJs/OAPs at Lagoon FM offer spins for cash. Works (streams up) but adds 🚩 Heat; at high heat an exposé hits rep hard.
-- **Streaming farms:** a shady guy offers 2M fake streams. Big chart jump this week, very high heat; detection pulls the song, bans it from the chart for 8 weeks and crushes rep. Rivals sometimes farm against you: "Report to the platform" is a valid move.
-- **Lagos life:** NEPA cuts power mid-session (buy diesel or lose the day), agberos at the video shoot, traffic on the Third Mainland Bridge makes you late, owambe DJ gig offers.
-- Events are held until the tutorial ends; one event runner at a time (re-entry guard).
-
-## 10. Economy and anti-loophole rules
-
-Lagos Life's "unlimited cash" bug is the thing to avoid. Rules:
-
-- Every income source has a **weekly cap** and **diminishing returns** when repeated in the same week (2nd beat sale −30%, 3rd −60%).
-- **Nothing sells back above its cost.** Gear and cars resell at 50–70%.
-- Song income comes only from the seeded model; no player input sets streams directly.
-- Gold buys vanity and small conveniences (skip a mix wait, one energy refill per day). **Gold never buys streams, hype, chart position or artists.**
-- Loans have caps tied to net worth.
-- Saves are local (client can edit them). Anything shared (leaderboard, chart race, referrals) is server-checked: score caps by week, per-week stream caps, and server recomputation from the seed + action log for the chart race.
-- **Balance bot** (`scripts/balance.mjs`) plays 500 seeded runs per profile with a few strategies (grinder, risk-taker using payola/farms, idle). Checks: no strategy grows cash faster than the cap curve; median grinder reaches Indie by weeks 30–45 and Major by 80–110; the farm strategy loses more than it gains on average; no negative-to-infinite loops. Run after every economy change.
+- Weekly caps and repeat penalties on every hustle (2nd use −30%, then −60%, −80%); seasons move pay and caps together.
+- Nothing sells back above cost. Loans capped. Gold never buys streams, hype, chart spots or artists.
+- **Balance bot** (`npm run balance`): seeded runs × 2 profiles × grinder/risky/chill/idle. Fails on a stuck run, a missing event id, an event with no possible choice, or a banner pointing at a locked action. Latest (40 runs per row): producer grinder Studio wk ~15, Indie ~28, Major ~84, Continental 15% (by ~wk 153); rich kid Indie ~14, Major ~68, Continental ~wk 133 (easier start, by design); Chill producer Major 60%. No run folds when following the banner. Bots play near-perfectly; real players will be slower.
 
 ## 11. Content rules
 
-- **All artists, songs, labels, venues and platforms are fictional.** Artist names come from a generator (stage-name parts + pidgin/English words) checked against a **blocklist of real Nigerian/African artist names** in `lib/game/blocklist.ts`. Song titles come from phrase banks. **No lyrics.** No real likenesses: avatars are drawn from shapes like Campus to Camp's.
-- Fictional brands: ClipTok (short video), Tunely (streaming), Lagoon FM, The Sanctuary, Lagoon Dome, Golden Mic Awards; rival labels Big Wave Records, Eko Gold Music, Jollof Republic.
-- **Real artists appear only through a paid, signed sponsorship**, always labelled "Sponsored", with their own licensed audio as an outbound link (we never host their audio).
-- Payola and streaming farms are satire with consequences, not a how-to.
-- Audio: generated WebAudio sfx and an optional tiny generated beat loop. **Off by default on mobile data** (`navigator.connection.saveData` or cellular).
+- All artists, songs, labels, venues and platforms are fictional (Tunely, ClipTok, Lagoon FM, The Sanctuary, Big Wave Records…). Names come from generators checked against a blocklist of real artists (`lib/game/names.ts`). No lyrics. No real likenesses.
+- Real artists appear only through a paid booking, always labelled "Sponsored", with a link to their own music; the game never hosts their audio.
+- Payola and streaming farms are satire with consequences.
+- No ads for gambling, loan apps, alcohol or tobacco (booking route rejects them; terms say so).
 
-## 12. UX rules (from the Campus to Camp and Japa Journey playtests)
+## 12. Player experience (Campus to Camp playtest lessons)
 
-- **Guided first week** (`components/game/Tour.tsx`): skippable spotlight that makes the player tap the real buttons (`data-tour="…"`) and plays a real first turn: Map → Open-mic bar → Sign artist → Surulere Sound → Record session → Yaba Hub → Sell a beat → Home → End week. First play only, replay from Profile/Settings. Spotlight follows its target on re-render. **No popups, ads or events until it ends.**
-- **Objective banner** always visible (see §8).
-- **Five bottom tabs:** Home (label, roster, releases, chart), Map, Wallet (Money / Shop), Phone (ClipTok feed / Messages / Rewards), Profile (label, awards, settings, how to play, replay tutorial). Every screen ≤ 2 taps; sub-sections are segments, never new tabs.
-- **"?" How to play** on every screen: one sheet with the goal, the stats and how a turn works.
-- **Every change visible:** worded floats ("+₦2,000", "⚡ −15 Energy", "🔥 +3 Hype"), pills flash, important changes toast. Toasts never cover the stats; max 2 at once.
-- **Phone-first:** 380px wide, tap targets ≥ 44px, no sideways scroll, mid-range Android on mobile data. Small bundle; no images over ~50 KB.
+- **Guided first week** (`components/game/Tour.tsx`): open-mic bar → sign → base → record → Yaba Hub → sell a beat → End week. Taps the real buttons (`data-tour`), follows them on re-render, skippable, replay from Profile/Settings/Help. No events, recap pop-up, ads or vignettes while it runs.
+- One objective banner; **5 tabs** (Home = map, Label = artists/songs/Top 50/bills, Wallet = money/shop, Phone = ClipTok feed/Live/Rewards, Profile); sub-sections are segments. "?" in the header everywhere.
+- Every change visible: worded floats, flashing stat pills, a result line and scene after each action; toasts (max 2) sit under the banner, never over the stats or the bottom controls.
+- Lists: unfinished on top, done at the bottom (quests, achievements, level requirements, Tour Pass tiers, actions in a place).
+- Needs panel (energy, money, buzz, team mood, new music) and a thought bubble with **Fix it**; artists' moods listed.
+- **Smooth mode**: automatic on low-end phones (≤3 GB, ≤4 cores, data saver, reduced motion), switch in Settings. Drops walkers, traffic, boats and idle animation.
+- Phone-first: 380px, 44px tap targets, no sideways scroll (playtest checks all three). Sound is generated and off by default.
+- Crash screen with "Back to the map" and "Report a problem"; the last 5 errors go with reports.
 
-## 13. Monetization (to Campus to Camp v2.2 / Japa Journey v4 standard)
+## 13. Coming back and playing together
 
-- **Paystack inline + server verification** (`/api/paystack/verify`): status success, currency NGN, amount ≥ price × 100, known product, `metadata.userId` = caller; idempotent grant by reference; once-only products enforced. **Signed webhook** (`x-paystack-signature`, HMAC sha512, timing-safe compare) as the backup. The browser never grants anything on its own.
-- **Products** (`lib/products.ts`, shared by browser and server): gold packs ₦500 / ₦1,500 / ₦4,000 / ₦10,000; Bedroom starter pack (once); VIP "Odogwu Pass" 30 days; monthly **Tour Pass** (season pass); remove ads; time-limited offers as cards, never popups (sapa relief after a flop, first No. 1, welcome back). Vanity first: studio looks, outfits, cars, limited merch drops.
-- **Rewarded ads** (AdSense H5) with **house-ad fallback**; never during the tutorial; VIP/remove-ads skip the wait but keep the reward.
-- **Brand and music money:**
-  - Billboards at map places (Sanctuary stage banner, Lagoon FM, Third Mainland Bridge, Lagoon Dome) for drink, telco and fintech brands, ₦5,000–₦50,000 per slot per week.
-  - **Sponsored songs:** real upcoming artists pay to appear on in-game Lagoon FM and the ClipTok feed, and to play a **virtual concert** at The Sanctuary. Labelled "Sponsored", outbound licensed link.
-  - **Self-serve booking page** (`/advertise`): pick slot and week, upload artwork, pay with Paystack (server-verified), owner approves.
-  - **Weekly advertiser report:** impressions and taps per booking (Supabase counters), private report link per booking.
-- **Retention:** daily reward (7-day cycle, VIP doubles), 3 daily quests, achievements, monthly Tour Pass, referral codes (`?ref=CODE`), leaderboard, weekly chart race.
-- **Target:** beat Lagos Life's ~$0.019 revenue per player (≈$46.9k / 2.5M) with ≥ $0.04, while keeping server cost near zero (static pages, local saves, Supabase only for money and boards).
-- Demo purchases are free only when no Paystack key is set and not in production.
-- **Hosting note:** Vercel Hobby is non-commercial. Move to Vercel Pro or another host before taking real money.
+- **Live map**: other bosses appear at the place they're at (first name, label, look); tap to wave. Notice board with set phrases only. Heartbeat ~45 s while active, half speed after 2 idle minutes, none after 5 or in a hidden tab; only changes are fetched; server can slow everyone (`LIVE_INTERVAL_SEC`) or switch it off (`LIVE_OFF=1`).
+- **Genre camps** (weekly season): pick a camp at the start; every action +1, release +5, chart entry +5, show +15, No. 1 +30; cap 600 a week; the server accepts at most +80 per heartbeat; everyone in the winning camp gets 60 🪙 once. Routines earn no points.
+- **Today in Lagos**: one shared daily event (same for everyone that day) with a bonus on matching actions.
+- **Invite codes** (NAME-XXXX): inviter gets 100 🪙 and the friend 50 🪙 once the friend has played 4 weeks.
+- Daily reward (7-day cycle, VIP doubles +25), 3 daily quests, 16 achievements, monthly **Tour Pass** (30 tiers, free + premium tracks), leaderboard (best score per phone, server rejects impossible scores; Chill labels skip it).
+- Shared kit (`lib/kit/`, copied unchanged): seasonal calendar (Detty December, Long January, harmattan, rainy season, festival and awards seasons, festivals), **Chill mode** (no game-over or late fees, fewer setbacks, money as words), **routines** (Quick do after 5 uses, routine after 10, max 3, 90% reward).
 
-## 14. Architecture and code map
+## 14. Money
 
-Next.js 16 App Router + Tailwind v4 + TypeScript strict + zustand (persisted as `abk-save-v1`, versioned with `migrate`). Same layout as Campus to Camp:
+- **Flutterwave first** (`NEXT_PUBLIC_PAYMENTS_PROVIDER=flutterwave`), Paystack as backup. Flutterwave: `/api/flutterwave/init` (price from the server's product list, reference `abk-<item>-<time>-<rand>`) → player pays on Flutterwave's page → back to `/?pay=flw` → `/api/flutterwave/verify` asks Flutterwave and checks paid, naira, amount ≥ price, the item from our reference, **the same phone started it**, and **a reference unlocks only once**. Signed webhook (`verif-hash`/HMAC, then re-checked with the API) records purchases so **Restore purchases** delivers them. Paystack verify does the same checks; its webhook checks the HMAC SHA-512 signature. The browser never grants anything alone. Free test purchases only without a payment provider outside production (or `NEXT_PUBLIC_DEMO_PURCHASES=true` on a preview).
+- Products (`lib/products.ts`): gold packs ₦500–₦10,000, Bedroom starter pack, Odogwu Pass (VIP 30 days), Tour Pass (+10 tiers option), remove ads, time-limited offer cards (sapa relief, first No. 1, level up, welcome back), never pop-ups. Gold buys looks (outfits, extras, studio looks, rides parked at your base) and one +40 energy refill a day.
+- Rewarded ads (Google H5 games ads) with a house/sponsored-song fallback, 10 a day, never in the tutorial; VIP/remove-ads players load no ad script.
+- **Advertisers and artists**: `/advertise` self-serve booking (sponsored song ₦5k, Lagoon FM spot ₦7.5k, Third Mainland billboard ₦15k, Sanctuary banner ₦25k, virtual concert ₦50k per week; 1/2/4 weeks), live preview, pay online with Flutterwave, private weekly report link (`/advertise/report`, signed with `AD_REPORT_SECRET`) counting views and taps. Live placements are set with `NEXT_PUBLIC_SPONSORS_JSON` (ids `b<booking>`).
+
+## 15. Code map
 
 | Area | Files |
 | --- | --- |
-| Game rules (pure, no React) | `lib/game/engine.ts` (create, actions, obligations, endWeek, levels, endings), `select.ts` (read-only helpers), `music.ts` (streams, chart, trends), `artists.ts` (open-mic acts, advances), `events.ts` (11 events, seeded roll), `names.ts` (name/title generators + real-artist blocklist), `rng.ts` (seeded), `data.ts` (places, profiles, levels), `util.ts` (deltas, worded chips), `types.ts`. To add: `goals.ts` |
-| State | `lib/store.ts` (zustand `mutate` applies engine results; floats, toasts, modals) |
-| Screens | `components/game/Shell.tsx` (HUD, objective banner, tabs), `tabs/*`, `MapView.tsx`, `Tour.tsx`, `Help.tsx`, `Toasts.tsx`, `Creation.tsx` |
-| Money (slice 2) | `lib/products.ts`, `lib/paystack.ts`, `lib/ads.ts`, `lib/sponsors.ts`, `app/api/paystack/{verify,webhook}`, `app/advertise` |
-| Cloud (slice 2+) | `lib/cloud.ts`, `app/api/{leaderboard,referral,track}`, `supabase/schema.sql` |
-| Tests | `scripts/balance.ts` (`npm run balance`, built), `scripts/playtest.mjs` (380px Playwright, to add) |
+| Rules (pure, no React) | `lib/game/engine.ts` (create, actions, signing, obligations, shows, endWeek, levels, endings), `select.ts`, `music.ts`, `artists.ts`, `events.ts`, `goals.ts`, `meta.ts` (quests, achievements, needs, task sorting), `names.ts`, `data.ts`, `kit.config.ts`, `rng.ts`, `util.ts`, `types.ts` |
+| Shared kit | `lib/kit/` (calendar, chill, routines; copied from Campus to Camp unchanged) |
+| State | `lib/store.ts` (zustand, saved as `abk-save-v1`, version 2 with `migratePlayer`) |
+| Client services | `lib/liveClient.ts`, `lib/live.ts`, `lib/daily.ts`, `lib/season.ts`, `lib/products.ts`, `lib/pay.ts`, `lib/ads.ts`, `lib/sponsors.ts`, `lib/analytics.ts`, `lib/sound.ts`, `lib/device.ts` |
+| Screens | `components/game/` (Game, Creation, Shell, Tour, PlaceSheet, Vignette, Sheets, AdSheet, LiveBeat, ErrorBoundary, `tabs/*`) |
+| World | `components/world/` (WorldView map, buildings, Figure with poses, scenes + ACT table, usePanZoom, useEnv clock and Smooth mode) |
+| Server | `lib/server/*`, `app/api/*` (live, wave, board, camps, ambassador, referral, entitlements, leaderboard, report, track, privacy/delete, flutterwave/*, paystack/*, advertise) |
+| Pages | `/` game, `/advertise`, `/advertise/report`, `/privacy`, `/terms` |
+| Database | `supabase/schema.sql` (all tables `abk_*`, RLS on, views `abk_retention`, `abk_funnel`, `abk_revenue`, `abk_ad_inbox`, `abk_ad_report`, `abk_reports_inbox`, daily clean-up) |
+| Tests | `scripts/balance.ts` (`npm run balance`), `scripts/playtest.mjs` (380px Playwright) |
 
-Conventions: engine works on `structuredClone(player)`; React 19 lint is strict (no `Date.now()`/`Math.random` in render, no setState directly in effects); read `node_modules/next/dist/docs/` before new Next APIs; no secrets or personal emails in code (`.env.example` lists names only).
+Conventions: rules work on `structuredClone(player)` and the store applies results; React 19 lint is strict (render never reads the clock: use `useNow()`); read `node_modules/next/dist/docs/` before new Next APIs (`searchParams` is a Promise); no secrets or personal emails in code (`.env.example` lists names only); commit as the GitHub no-reply address.
 
-## 15. Build plan (small playable slices)
+## 16. How to test
 
-1. **Slice 1 — core loop:** creation (2 profiles), Lagos map (9 places), sign artist, record → master → release, seeded chart + trend, end week with bills, 3 obligations (advance, release date, studio rent), objective banner, tutorial, 5 tabs, help sheet, floats/toasts, ~20 events, balance bot, playtest.
-2. **Slice 2 — money:** Paystack verify + webhook, store, gold, VIP, Tour Pass, offers, rewarded ads + house ads, billboards, sponsored songs, `/advertise`.
-3. **Slice 3 — retention:** daily rewards, quests, achievements, referrals, leaderboard, weekly chart race (server-checked), cloud saves.
-4. **Slice 4 — depth:** videos, shows and tours, payola/farm chains, awards, label levels to Continental, more events.
+```bash
+npm install
+npm run lint && npx tsc --noEmit && npm run build
+npm run balance                      # RUNS=200 for a bigger sample
+npm start                            # http://localhost:3000
+BASE_URL=http://localhost:3000 CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/playtest.mjs   # PROFILE=richkid for the other start
+```
 
-After each slice: `npm run lint`, `npx tsc --noEmit`, `npm run build`, `npm run balance`, `node scripts/playtest.mjs`, look at the screenshots, update this file.
-
-## 16. Decision log (newest first)
+## 17. Decision log (newest first)
 
 | Date | Decision | Why |
 | --- | --- | --- |
-| 2026-11-01 | Build the game to Campus to Camp's v2.11 standard from the start (one-world Home, scenes, Smooth mode, unfinished-first lists, live players, genre season, daily event, ambassador codes, retention views) while keeping this game's own name, places, look and story | Audit: nothing was built yet, so there is nothing to retrofit (see section 19) |
-| 2026-11-01 | Next.js 16.4.3 | Security advisories; same fix as Campus to Camp |
-| 2026-11-01 | Events live in `events.ts`; read-only helpers in `select.ts`; the balance bot fails on any missing event id or stuck run | The rules called an events file that didn't exist (build broken); Campus to Camp froze live on a missing event |
-| 2026-11-01 | Test on Vercel's free (Hobby) plan; owner will say when to move to a paid host | Owner decision; Hobby is non-commercial, so move before real money |
-| 2026-10-16 | Design v0.1 written from Campus to Camp v2.2 and Japa Journey v4 | Same kit, same playtest lessons |
+| 2026-11-07 | v0.3.0: slices 1–4 built in one go (owner: "implement slice 1 and all other recommendations") | Audit recommendations |
+| 2026-11-07 | Flutterwave is the main payment provider, Paystack kept as backup; verify checks the buyer's phone and grant-once on top of Campus to Camp's checks | Owner verified with Flutterwave (Nov 2026) |
+| 2026-11-07 | All Supabase tables prefixed `abk_` | Lets this game share the owner's free Supabase project |
+| 2026-11-07 | Tab 2 is **Label** (artists, songs, Top 50, bills) instead of a second map, because Home is the map | Every screen within 2 taps without a duplicate map |
+| 2026-11-07 | Weekly group = **genre camps** | Fits the game; no real-world data needed |
+| 2026-11-07 | Economy retuned with the bot: flatter stream multipliers, hype fades 10%/week, fan growth capped per artist, 3 weeks between singles, ₦800 per 1,000 streams, Sanctuary shows at Studio level, Indie ₦3m, Major 2 No. 1s, Continental ₦100m + 4 No. 1s, Daddy ₦120k until week 8 | v0.2 bot reached Continental by week ~45 |
+| 2026-11-07 | Players can let an artist go (Label → Artists) | Chill mode artists never leave, so rosters clogged |
+| 2026-11-07 | Shared kit copied in; Chill mode, seasonal calendar, routines; Report a problem, Privacy, Terms, Delete my online data, traffic limits from Campus to Camp v2.12–v2.14 | Same launch-safety bar as Campus to Camp |
+| 2026-11-07 | Look: night indigo, danfo yellow, stage magenta, lagoon teal; Unbounded display font; objective banner as a danfo destination board; street-front buildings (not isometric) | Own identity, not a Campus to Camp reskin |
+| 2026-11-01 | Upgrade audit (section 19); events file written so the build works; Next.js 16.4.3 | Build was broken; security advisories |
+| 2026-11-01 | Test on Vercel's free plan until the owner says otherwise | Owner decision; Hobby is non-commercial, so move before real money |
 | 2026-10-16 | Seeded music model; gold never buys streams/chart | No money loophole, no server cost |
-| 2026-10-16 | Verify flow follows Japa Journey v4 (user check, idempotent grant) | Stronger than Campus to Camp's verify |
 
-## 17. Current status
+## 18. Current status
 
-- Not playable yet. The site shows a "coming soon" page; the rules (create, actions, signing, recording, release, chart, obligations, events, levels, endings) exist and pass lint, types and build.
-- Balance bot (60 runs × 2 profiles × 3 strategies): no stuck runs, no missing events, but **far too easy**: the grinder reaches Continental by week ~45 with ~30 No. 1s. Player songs out-stream the NPC chart. Tune in slice 1 (target in section 10: Indie by weeks 30–45, Major by 80–110).
-- No screens, tutorial, objective banner, tabs or playtest script yet.
-- Repo: `iamtersoougn-dot/afrobeats-king` (main). Vercel not linked yet.
+- **Playable** at 380px: creation, tutorial, full loop, world, scenes, all tabs, shop (test mode), live/season/invites/leaderboard (need Supabase), payments (need keys), advertiser page.
+- Checks passing: lint, types, build, balance bot (no stuck runs, no missing events, banner always doable), 380px playtest for both profiles (tutorial, 3 more weeks, all tabs and sheets, no sideways scroll, no errors), payment checks against a stand-in Flutterwave (wrong phone 403, underpaid 402, bad reference 400, unsigned webhook 401, Paystack signature checked).
+- Not yet run against a real Supabase or real Flutterwave account. Grant-once needs the database.
+- Not linked to Vercel yet (owner will do it later).
 
-## 18. What's next
+## 19. What's next
 
-- [ ] Slice 1, core loop + player-experience rules: store (zustand, `abk-save-v1`, migrate), creation (2 profiles), slim stats bar, objective banner (`goals.ts`), 5 tabs, ? help, tutorial, floats/pills/result line, unfinished-first lists, Smooth mode, playtest script. Tune the economy with the bot.
-- [ ] Link the repo to a Vercel project.
-- [ ] Slice 2, the world: Lagos-at-night map (pan/zoom), own buildings and landmarks (The Sanctuary, Lagoon FM mast, Third Mainland Bridge, Lekki creator house), place scenes, activity scenes, needs + artist moods + thought bubble.
-- [ ] Slice 3, together and coming back: live players, waves, set-phrase board, weekly genre-camp season, daily "Today in Lagos" event, ambassador codes, retention and funnel views.
-- [ ] Slice 4, money: Paystack verify + webhook, gold/VIP/Tour Pass/offers, rewarded ads + house ads, billboards, `/advertise`, sponsored songs.
+- [ ] **Owner:** link the repo to a Vercel project; set env vars from `.env.example`; run `supabase/schema.sql` in Supabase; set the Flutterwave webhook URL and secret hash; set `AD_REPORT_SECRET`.
+- [ ] Real-phone playtest with a few people; watch `abk_retention` and `abk_funnel`.
+- [ ] Shared weekly **chart race** between players (server-checked from seed + action log).
+- [ ] Cloud saves (sign-in) so purchases survive a lost phone.
+- [ ] More depth: Lagoon Dome and tours (Accra, Nairobi, Jo'burg), Golden Mic Awards, contract renegotiation, more events, interiors.
+- [ ] Tour/levels tutorial for Studio-level features (shows, videos).
+- [ ] Optional generated beat loop (off on mobile data).
 
-## 19. Upgrade audit against Campus to Camp v2.11 (2026-11-01)
+## 20. Upgrade audit against Campus to Camp (2026-11-01, done in v0.3.0)
 
-Nothing was built when this was written, so every lesson is "not yet". Effort: S part of a session, M about one session, L several.
-
-| Lesson | Upgrading here means | Effort | Slice |
-| --- | --- | --- | --- |
-| Phone-first (380px, 44px, no sideways scroll) | Every screen built to it; 380px playtest | S | 1 |
-| Smooth mode | Auto on low-end phones + Settings switch; cuts crowds, traffic, idle animation | S | 1 |
-| Home is the world, slim stats bar | Lagos map with your base; bar: ₦, ⚡, 🔥, ⭐, week | M | 2 |
-| Guided first session | Tap-the-real-button tour: bar → sign → record → sell beat → end week | M | 1 |
-| One objective banner | `goals.ts`, sends you to earn when you can't pay | S | 1 |
-| 5 tabs, ? help | Home, Map (maybe Charts), Wallet, Phone, Profile; one help sheet | S | 1 |
-| Every change visible | Floats, flashing pills, result line, max 2 toasts | S | 1 |
-| Unfinished on top | Obligations by due date, done items at the bottom | S | 1 |
-| Nothing can freeze | Done in v0.2 (events exist, bot checks) | S | ✓ |
-| Zoomable map, buildings, people, traffic, day/night, landmarks | Own night-Lagos style; reuse pan/zoom code only | L | 2 |
-| Fly to place + place scene | Booth, Hub desks, open-mic stage, radio studio | M | 2 |
-| Activity scenes, natural movement | Producer at desk, artist in booth, DJ, dancers | L | 2 |
-| Needs panel + thought bubble | Your needs + artist moods; "Fix it" shortcut | M | 2 |
-| Light multiplayer | Other bosses on the map, waves, set music phrases | M | 3 |
-| Weekly group season | Genre camps; winning genre's players get gold | M | 3 |
-| Daily shared event | "Today in Lagos", date-seeded | S | 3 |
-| Ambassador codes | LABEL-XXXX, rewards both sides | S | 3 |
-| Retention + funnel views | Funnel: first artist, first release, first chart entry, Studio level | S | 3 |
-| Paystack verify + webhook | Japa Journey's buyer check and grant-once | M | 4 |
-| Gold, VIP, passes, offers | Vanity first; gold never buys streams | M | 4 |
-| Rewarded ads + house fallback | Never in the tutorial | S | 4 |
-| Billboards, `/advertise`, sponsored songs | From ₦5k/week; sponsored clearly labelled | M | 4 |
-| Free test purchases only off production | Env check | S | 4 |
+| Lesson | Status in v0.3.0 |
+| --- | --- |
+| Phone-first 380px / 44px / no sideways scroll, Smooth mode | Done (playtest enforces it) |
+| Home is the world, slim stats bar | Done |
+| Guided first session, one objective banner, 5 tabs, "?" everywhere | Done |
+| Every change visible; unfinished tasks on top | Done |
+| Nothing can freeze (every event/modal exists) | Done (bot + crash screen) |
+| Zoomable map, buildings, people, traffic, day/night, landmarks | Done in this game's own style |
+| Fly to place + place scene; activity scenes with natural movement | Done (knee-lift steps, seated at desks) |
+| Needs panel + thought bubble with Fix it | Done |
+| Light multiplayer, weekly group season, daily shared event, invite codes, retention/funnel views | Done (need Supabase) |
+| Server-verified payments + webhook; gold/VIP/passes; rewarded ads; billboards, `/advertise`, sponsored songs, reports | Done (need keys) |

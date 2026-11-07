@@ -40,8 +40,8 @@ export const PLACES: Place[] = [
   { id: "bar", name: "Open-mic bar", area: "Surulere", icon: "🎤", blurb: "Find and sign new artists. DJ for cash.", x: 18, y: 66, minLevel: 0 },
   { id: "radio", name: "Lagoon FM", area: "Ikeja", icon: "📻", blurb: "Push your songs on radio.", x: 38, y: 16, minLevel: 0 },
   { id: "mamaput", name: "Mama Put", area: "Yaba", icon: "🍲", blurb: "Eat, rest small and hear the gist.", x: 64, y: 52, minLevel: 0 },
-  { id: "law", name: "Law office", area: "Victoria Island", icon: "⚖️", blurb: "Pay artist advances and sort contracts.", x: 74, y: 78, minLevel: 0 },
-  { id: "bank", name: "Bank", area: "Victoria Island", icon: "🏦", blurb: "Loans and repayments.", x: 86, y: 70, minLevel: 0 },
+  { id: "law", name: "Law office", area: "Victoria Island", icon: "⚖️", blurb: "Pay artist advances and sort contracts.", x: 70, y: 78, minLevel: 0 },
+  { id: "bank", name: "Bank", area: "Victoria Island", icon: "🏦", blurb: "Loans and repayments.", x: 90, y: 70, minLevel: 0 },
   { id: "creator", name: "Creator house", area: "Lekki", icon: "📱", blurb: "ClipTok challenges and music videos.", x: 90, y: 88, minLevel: 1 },
   { id: "sanctuary", name: "The Sanctuary", area: "Ikeja", icon: "🏛️", blurb: "The 4,000-seat hall. Book shows for your artists.", x: 22, y: 22, minLevel: 1 },
 ];

@@ -150,7 +150,7 @@ function Toasts() {
     <div className="pointer-events-none relative z-50 h-0" aria-live="polite">
       <div className="absolute left-0 right-0 top-10 flex flex-col gap-1.5 px-3">
         {toasts.map((t) => (
-          <button key={t.id} className={`toast-in pointer-events-auto flex w-full items-start gap-2 rounded-2xl border bg-night-2 px-3 py-2 text-left shadow-xl ${t.tone === "good" ? "border-lagoon/60" : t.tone === "bad" ? "border-okada/60" : "border-line"}`} onClick={() => dismiss(t.id)}>
+          <button key={t.id} className={`toast-in pointer-events-auto flex min-h-[44px] w-full items-start gap-2 rounded-2xl border bg-night-2 px-3 py-2 text-left shadow-xl ${t.tone === "good" ? "border-lagoon/60" : t.tone === "bad" ? "border-okada/60" : "border-line"}`} onClick={() => dismiss(t.id)}>
             <span className="text-xl leading-none">{t.icon}</span>
             <span className="min-w-0 flex-1">
               <span className="block text-[13.5px] font-bold leading-snug">{t.title}</span>

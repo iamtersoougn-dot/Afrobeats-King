@@ -51,3 +51,18 @@ const INV = load();
 /** The billboard in a slot: a paying brand if there is one, otherwise our own "advertise here". */
 export const billboardFor = (slot: Billboard["slot"]) => INV.billboards.find((b) => b.slot === slot) ?? HOUSE.find((b) => b.slot === slot)!;
 export const SPONSORED_SONGS = INV.songs;
+
+// ───────── counting for the advertiser's weekly report (ids like "b12" = booking #12) ─────────
+const seen = new Set<string>();
+const isHouse = (id: string) => id.startsWith("house");
+/** Counts one view per placement per visit. */
+export function noteAdView(id: string) {
+  if (isHouse(id) || seen.has(id) || typeof window === "undefined") return;
+  seen.add(id);
+  import("./analytics").then((m) => m.analytics("ad_view", { id }));
+}
+export function noteAdTap(id: string) {
+  if (isHouse(id) || typeof window === "undefined") return;
+  import("./analytics").then((m) => m.analytics("ad_tap", { id }));
+}
+export { isHouse };

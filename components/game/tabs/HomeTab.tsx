@@ -10,6 +10,7 @@ import type { PlaceId, Player } from "@/lib/game/types";
 import { needs, worstNeed } from "@/lib/game/meta";
 import { dailyEvent } from "@/lib/daily";
 import { OFFERS, productById } from "@/lib/products";
+import { billboardFor, isHouse, noteAdTap } from "@/lib/sponsors";
 import { CALENDAR } from "@/lib/game/kit.config";
 import { fmtDate, nextFestival, seasonsOn, whenText } from "@/lib/kit/calendar";
 import { calDay } from "@/lib/game/select";
@@ -70,6 +71,14 @@ export default function HomeTab() {
         onOther={(o) => wave(o.pid, "👋").then((ok) => ok && toast({ icon: "👋", title: `You waved at ${o.name}`, tone: "good" }))}
         onLandmark={(id, slot) => {
           if (id === "bridge") toast({ icon: "🌉", title: "Third Mainland Bridge", text: "About 11.8 km over the lagoon. Rush hour here is a lifestyle.", tone: "neutral" });
+          if (id === "billboard") {
+            const b = billboardFor(slot === "sanctuary" ? "sanctuary" : "bridge");
+            if (!isHouse(b.id) && b.url) {
+              noteAdTap(b.id);
+              window.open(b.url, "_blank", "noopener,noreferrer");
+              return;
+            }
+          }
           if (id === "billboard") toast({ icon: "📢", title: slot === "bridge" ? "Billboard by the bridge" : "Billboard at The Sanctuary", text: "Brands and artists can book this spot from ₦5,000 a week. Profile → Advertise.", tone: "neutral" });
         }}
       />
