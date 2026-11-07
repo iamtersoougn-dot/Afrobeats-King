@@ -1,8 +1,8 @@
 export type Tone = "good" | "bad" | "neutral";
 export type ProfileId = "richkid" | "producer";
 export type Genre = "afrobeats" | "amapiano" | "streethop" | "afrorb" | "alte" | "gospel" | "drill";
-export type PlaceId = "base" | "studio" | "hub" | "bar" | "radio" | "law" | "bank" | "mamaput" | "creator";
-export type TabId = "home" | "map" | "wallet" | "phone" | "profile";
+export type PlaceId = "base" | "studio" | "hub" | "bar" | "radio" | "law" | "bank" | "mamaput" | "creator" | "sanctuary";
+export type TabId = "home" | "label" | "wallet" | "phone" | "profile";
 
 /** Numbers an action, event or bill can change. */
 export interface Deltas {
@@ -21,6 +21,15 @@ export interface ArtistLook {
   skin: string;
   hue: number; // outfit colour
   hair: number; // 0..4
+}
+
+/** The boss (the player's character). Drawn the same everywhere: world, scenes, wardrobe, live map. */
+export interface BossLook {
+  skin: string;
+  hair: number; // 0..5
+  hue: number; // outfit colour
+  outfit: string; // shop id, "basic" by default
+  extra?: string; // accessory id: shades, chain, cap, headphones, crown
 }
 
 export interface Artist {
@@ -59,6 +68,7 @@ export interface Song {
   rank: number; // current position (0 = off chart)
   viral: boolean;
   pulled: number; // weeks banned from the chart (streaming farm caught)
+  video?: boolean; // music video shot (+20% streams)
   farmed: number; // fake streams added this week
 }
 
@@ -74,7 +84,7 @@ export interface NpcSong {
   rank: number;
 }
 
-export type ObligationKind = "advance" | "release" | "rent" | "loan";
+export type ObligationKind = "advance" | "release" | "rent" | "loan" | "show";
 
 export interface Obligation {
   id: string;
@@ -105,6 +115,14 @@ export interface WeekRecap {
   lines: { icon: string; text: string; tone: Tone }[];
   income: number;
   expenses: number;
+}
+
+export interface Show {
+  id: string;
+  artistId: string;
+  artistName: string;
+  week: number; // show night (end of that week)
+  venue: "sanctuary";
 }
 
 export interface Player {
@@ -143,8 +161,15 @@ export interface Player {
   flags: Record<string, number>;
   log: LogEntry[];
   recap?: WeekRecap;
-  stats: { earnedTotal: number; spentTotal: number; charted: number; top10: number; no1: number; released: number; bestRank: number; sapaWeeks: number };
+  stats: { earnedTotal: number; spentTotal: number; charted: number; top10: number; no1: number; released: number; bestRank: number; sapaWeeks: number; shows: number; sellouts: number; videos: number };
   loan: number; // outstanding loan balance
+  look: BossLook;
+  shows: Show[];
+  // shared life-sim kit (lib/kit): all optional so old saves load
+  chill?: boolean;
+  calDay?: number; // days since 1 Jan 2026 at the start of this week
+  uses?: Record<string, number>; // lifetime uses per action (Quick do, routines)
+  routines?: string[];
   ended?: { kind: "win" | "fold" | "time"; week: number; score: number; title: string; text: string };
 }
 

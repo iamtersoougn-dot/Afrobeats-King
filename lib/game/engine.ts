@@ -3,16 +3,19 @@
  * No React, no Date.now/Math.random: every roll is seeded (rng.ts) so runs replay and the balance bot is fair.
  */
 import { candidatesFor } from "./artists";
-import { DAYS_PER_WEEK, LEVELS, LIVING_COST, LOAN, MAX_WEEKS, PLACES, SESSIONS_PER_SONG, STUDIO_LEASE, profileById } from "./data";
+import { ALLOWANCE, DAYS_PER_WEEK, LEVELS, LIVING_COST, LOAN, MAX_WEEKS, PLACES, SESSIONS_PER_SONG, SHOW, STUDIO_LEASE, VIDEO, profileById } from "./data";
+import { CALENDAR, DAYS_PER_TURN, NO_ROUTINE, ROUTINES, START_DAY } from "./kit.config";
+import { festivalsIn, seasonsOn } from "../kit/calendar";
+import { scaleGains } from "../kit/routines";
 import { songTitle } from "./names";
 import { NAIRA_PER_1K, buildChart, makeTrend, seedChart, songStreams, tickNpc } from "./music";
 import { rng, type Rng } from "./rng";
 import { pickEvent, rollEvent } from "./events";
-import { artistById, latestRelease, netWorth, releasedSongs, slots, songInProgress } from "./select";
-import type { ActionResult, Artist, Deltas, Obligation, PlaceId, Player, ProfileId, Tone, WeekRecap } from "./types";
+import { artistById, calDay, chillOn, effectsNow, latestRelease, netWorth, releasedSongs, slots, songInProgress } from "./select";
+import type { ActionResult, Artist, BossLook, Deltas, Obligation, PlaceId, Player, ProfileId, Tone, WeekRecap } from "./types";
 import { applyDeltas, clamp, naira, streamsText } from "./util";
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const clone = <T,>(x: T): T => structuredClone(x);
 
 // ───────── Create ─────────
@@ -22,7 +25,12 @@ export interface NewGameOpts {
   label: string;
   profile: ProfileId;
   seed: string;
+  look?: BossLook;
+  chill?: boolean;
 }
+
+export const DEFAULT_LOOK: BossLook = { skin: "#7d4f30", hair: 1, hue: 285, outfit: "basic" };
+
 
 export function createPlayer(o: NewGameOpts): Player {
   const pr = profileById(o.profile);
@@ -59,8 +67,14 @@ export function createPlayer(o: NewGameOpts): Player {
     eventsSeen: {},
     flags: {},
     log: [],
-    stats: { earnedTotal: 0, spentTotal: 0, charted: 0, top10: 0, no1: 0, released: 0, bestRank: 0, sapaWeeks: 0 },
+    stats: { earnedTotal: 0, spentTotal: 0, charted: 0, top10: 0, no1: 0, released: 0, bestRank: 0, sapaWeeks: 0, shows: 0, sellouts: 0, videos: 0 },
     loan: 0,
+    look: o.look ?? DEFAULT_LOOK,
+    shows: [],
+    chill: !!o.chill,
+    calDay: START_DAY,
+    uses: {},
+    routines: [],
   };
   tickNpc(p, 1);
   p.candidates = candidatesFor(p, 1);
@@ -73,7 +87,7 @@ export function log(p: Player, icon: string, text: string, tone: Tone = "neutral
   if (p.log.length > 60) p.log.length = 60;
 }
 
-export { netWorth, artistById, songInProgress, releasedSongs, latestRelease, slots };
+export { netWorth, artistById, songInProgress, releasedSongs, latestRelease, slots, chillOn, calDay, effectsNow };
 
 // ───────── Actions ─────────
 
@@ -97,7 +111,9 @@ const dim = (p: Player, id: string, steps = [1, 0.7, 0.4, 0.2]) => steps[Math.mi
 /** Weekly earnings cap per source. */
 const capEarn = (p: Player, src: string, amount: number, cap: number) => {
   const sofar = p.earned[src] ?? 0;
-  const pay = Math.max(0, Math.min(amount, cap - sofar));
+  // seasons change how much people pay (Detty December up, Long January down); the cap moves with them
+  const demand = effectsNow(p).demand;
+  const pay = Math.max(0, Math.min(amount * demand, cap * demand - sofar));
   p.earned[src] = sofar + pay;
   return Math.round(pay / 100) * 100;
 };
@@ -105,7 +121,7 @@ const capEarn = (p: Player, src: string, amount: number, cap: number) => {
 function sessionArtist(p: Player): Artist | undefined {
   const cur = songInProgress(p);
   if (cur) return artistById(p, cur.artistId);
-  return [...p.artists].sort((a, b) => (a.lastReleaseWeek || a.signedWeek) - (b.lastReleaseWeek || b.signedWeek))[0];
+  return [...p.artists].filter((a) => !a.lastReleaseWeek || p.week - a.lastReleaseWeek >= RELEASE_GAP).sort((a, b) => (a.lastReleaseWeek || a.signedWeek) - (b.lastReleaseWeek || b.signedWeek))[0];
 }
 
 function record(p: Player, r: Rng, pro: boolean) {
@@ -115,8 +131,10 @@ function record(p: Player, r: Rng, pro: boolean) {
     s = { id: `s${p.week}_${p.songs.length}`, title: songTitle(rng(p.seed, "title", p.songs.length)), artistId: a.id, artistName: a.name, genre: a.genre, quality: 0, sessions: 0, stage: "recording", promo: 0, weekly: 0, total: 0, peak: 0, rank: 0, viral: false, pulled: 0, farmed: 0 };
     p.songs.push(s);
   }
-  const gain = (pro ? 13 : 6) + p.ear * 0.12 + a.talent * 0.11 + p.studio * 2.5 + r.range(0, 4) - (a.mood < 30 ? 4 : 0);
-  s.quality = clamp(Math.round(s.quality + gain));
+  // each session adds less as the song nears what this artist and your ear can reach
+  const ceiling = 30 + a.talent * 0.45 + p.ear * 0.25 + p.studio * 3 + (pro ? 6 : 0);
+  const gain = (pro ? 9 : 5) + p.ear * 0.07 + a.talent * 0.08 + p.studio * 1.5 + r.range(0, 3) - (a.mood < 30 ? 4 : 0);
+  s.quality = clamp(Math.round(Math.min(ceiling, s.quality + gain)));
   s.sessions++;
   if (s.sessions >= SESSIONS_PER_SONG) s.stage = "mixing";
   const done = s.stage === "mixing";
@@ -128,9 +146,16 @@ function record(p: Player, r: Rng, pro: boolean) {
 }
 
 const needArtist = (p: Player) => (p.artists.length ? null : "Sign an artist first (Open-mic bar)");
+/** Artists need a few weeks between singles (promo run, shows, rest). */
+export const RELEASE_GAP = 3;
+const readyArtist = (p: Player) => p.artists.find((a) => !a.lastReleaseWeek || p.week - a.lastReleaseWeek >= RELEASE_GAP);
 const needRecording = (p: Player) => {
   const s = songInProgress(p);
   if (s && s.stage !== "recording") return s.stage === "mixing" ? `Mix & master "${s.title}" first` : `Release "${s.title}" first`;
+  if (!s && p.artists.length && !readyArtist(p)) {
+    const next = Math.min(...p.artists.map((a) => a.lastReleaseWeek + RELEASE_GAP));
+    return `Your artists are promoting their singles. Next session from week ${next}`;
+  }
   return needArtist(p);
 };
 const needMixing = (p: Player) => (songInProgress(p)?.stage === "mixing" ? null : "Record a song first (3 sessions)");
@@ -158,7 +183,7 @@ export const ACTIONS: ActionDef[] = [
     check: needMixing,
     run: (p) => {
       const s = songInProgress(p)!;
-      s.quality = clamp(Math.round(s.quality + p.ear * 0.1 - 2));
+      s.quality = clamp(Math.round(s.quality + p.ear * 0.06 - 2));
       s.stage = "mastered";
       return { text: `"${s.title}" is mastered (quality ${s.quality}). Release it this Friday!`, tone: "good", deltas: { ear: 1 } };
     },
@@ -197,7 +222,7 @@ export const ACTIONS: ActionDef[] = [
     check: needMixing,
     run: (p) => {
       const s = songInProgress(p)!;
-      s.quality = clamp(s.quality + 8);
+      s.quality = clamp(s.quality + 6);
       s.stage = "mastered";
       return { text: `"${s.title}" sounds expensive now (quality ${s.quality}). Release it!`, tone: "good", deltas: {} };
     },
@@ -292,6 +317,42 @@ export const ACTIONS: ActionDef[] = [
   },
   // Creator house (Studio level)
   {
+    id: "shoot_video", place: "creator", icon: "🎬", label: "Shoot a music video", desc: `${naira(VIDEO.cost)}. +20% streams for your latest single, and a hype bump.`, energy: 25, days: 2, cost: VIDEO.cost, max: 1,
+    check: (p) => {
+      const s = latestRelease(p);
+      if (!s) return "Release a song first";
+      return s.video ? `"${s.title}" already has a video` : null;
+    },
+    run: (p) => {
+      const s = latestRelease(p)!;
+      s.video = true;
+      s.promo = Math.min(200, s.promo + 20);
+      p.stats.videos++;
+      log(p, "🎬", `Shot the video for "${s.title}".`, "good");
+      return { text: `The "${s.title}" video is out. Dancers, a G-Wagon and a lot of smoke.`, tone: "good", deltas: { hype: 4 }, toast: { icon: "🎬", title: "Video out", text: s.title, tone: "good" } };
+    },
+  },
+  // The Sanctuary (Indie level)
+  {
+    id: "book_show", place: "sanctuary", icon: "🎟️", label: "Book a show", desc: `${naira(SHOW.deposit)} deposit now, ${naira(SHOW.balance)} balance due by show week. Your most popular artist headlines.`, energy: 15, cost: SHOW.deposit,
+    check: (p) => {
+      const a = headliner(p);
+      if (!a) return `Needs an artist with ⭐ ${SHOW.minStar}+ fans`;
+      const last = p.shows.length ? Math.max(...p.shows.map((x) => x.week)) : p.flags.lastShow ?? -99;
+      if (p.shows.length) return "You already have a show booked";
+      if (p.week + SHOW.weeksAhead - last < SHOW.gap) return `Fans need a break: next show from week ${last + SHOW.gap - SHOW.weeksAhead}`;
+      return null;
+    },
+    run: (p) => {
+      const a = headliner(p)!;
+      const week = p.week + SHOW.weeksAhead;
+      p.shows.push({ id: `show${p.week}`, artistId: a.id, artistName: a.name, week, venue: "sanctuary" });
+      addObligation(p, { kind: "show", title: `Show balance: ${a.name} at The Sanctuary`, amount: SHOW.balance, dueWeek: week, place: "sanctuary", ref: a.id });
+      log(p, "🎟️", `Booked ${a.name} at The Sanctuary for week ${week}.`, "good");
+      return { text: `${a.name} headlines The Sanctuary in week ${week}. Pay the ${naira(SHOW.balance)} balance here before then.`, tone: "good", deltas: { hype: 3 }, toast: { icon: "🎟️", title: "Show booked", text: `Week ${week}`, tone: "good" } };
+    },
+  },
+  {
     id: "cliptok", place: "creator", icon: "📱", label: "ClipTok challenge", desc: "Influencers dance to your latest single. Huge if it fits the trend.", energy: 20, cost: 60_000, max: 1,
     check: needReleased,
     run: (p) => {
@@ -303,7 +364,13 @@ export const ACTIONS: ActionDef[] = [
   },
 ];
 
+/** Your most popular artist who can sell tickets. */
+export function headliner(p: Player) {
+  return [...p.artists].filter((a) => a.star >= SHOW.minStar).sort((a, b) => b.star - a.star)[0];
+}
+
 export const actionById = (id: string) => ACTIONS.find((a) => a.id === id);
+export const canRoutine = (id: string) => !NO_ROUTINE.includes(id);
 export const actionCost = (p: Player, a: ActionDef) => (typeof a.cost === "function" ? a.cost(p) : a.cost ?? 0);
 
 /** Why an action can't be done right now, or null if it can. */
@@ -320,14 +387,16 @@ export function actionLock(p: Player, a: ActionDef): string | null {
   return null;
 }
 
-export function doAction(p: Player, id: string): ActionResult {
+export function doAction(p: Player, id: string, scale = 1): ActionResult {
   const a = actionById(id);
   if (!a) return { ok: false, text: "Unknown action", tone: "bad", deltas: {} };
   const why = actionLock(p, a);
   if (why) return { ok: false, text: why, tone: "bad", deltas: {} };
   const r = rng(p.seed, "act", p.week, id, used(p, id));
   const out = a.run(p, r);
+  if (scale !== 1) out.deltas = scaleGains(out.deltas, scale);
   p.used[id] = used(p, id) + 1;
+  p.uses = { ...(p.uses ?? {}), [id]: (p.uses?.[id] ?? 0) + 1 };
   const costs: Deltas = { energy: -a.energy, cash: -actionCost(p, a) };
   if (a.days) costs.days = -a.days;
   const applied = applyDeltas(p, mergeDeltas(costs, out.deltas));
@@ -363,6 +432,19 @@ export function signArtist(p: Player, id: string): ActionResult {
   log(p, "✍🏾", `Signed ${a.name} (${naira(c.advance)} advance).`, "good");
   const d = applyDeltas(p, { cash: -first, energy: -10, hype: 2 });
   return { ok: true, text: `${a.name} signed! Half the advance paid now; the rest is due at the Law office by week ${p.week + 3}. Release a single with them by week ${p.week + 8}.`, tone: "good", deltas: d, icon: "✍🏾", toast: { icon: "✍🏾", title: `${a.name} signed`, text: "Now record their first single", tone: "good" } };
+}
+
+/** Let an artist go: their unpaid advance is forgiven, unreleased songs are shelved. */
+export function dropArtist(p: Player, id: string): ActionResult {
+  const a = artistById(p, id);
+  if (!a) return { ok: false, text: "Not on your roster", tone: "bad", deltas: {} };
+  p.artists = p.artists.filter((x) => x.id !== id);
+  p.obligations = p.obligations.filter((o) => o.ref !== id);
+  p.songs = p.songs.filter((s) => s.artistId !== id || s.stage === "released");
+  p.shows = p.shows.filter((s) => s.artistId !== id);
+  log(p, "👋🏾", `Released ${a.name} from their contract.`, "neutral");
+  const d = applyDeltas(p, chillOn(p) ? {} : { rep: -2 });
+  return { ok: true, text: `${a.name} is no longer on ${p.label}. The slot is free.`, tone: "neutral", deltas: d, icon: "👋🏾" };
 }
 
 // ───────── Obligations ─────────
@@ -453,7 +535,8 @@ export interface EndWeekOpts {
 export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
   const lines: WeekRecap["lines"] = [];
   const week = p.week;
-  const startCash = p.cash;
+  const chill = chillOn(p);
+  const fx = effectsNow(p);
   let income = 0;
   let expenses = 0;
   const earn = (n: number) => {
@@ -467,13 +550,23 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
     p.stats.spentTotal += n;
   };
 
+  // 0. Routines run first, with what's left of the week (90% of the reward, never below the energy floor)
+  for (const id of p.routines ?? []) {
+    const a = actionById(id);
+    if (!a || !canRoutine(id) || actionLock(p, a)) continue;
+    if (p.energy - a.energy < ROUTINES.energyFloor) continue;
+    const r = doAction(p, id, ROUTINES.rewardScale);
+    if (r.ok) lines.push({ icon: "🔁", text: `Routine: ${a.label}. ${r.text}`, tone: "neutral" });
+  }
+
   // 1. Allowance
-  if (p.profile === "richkid" && week <= 12) {
-    earn(150_000);
-    lines.push({ icon: "👨🏾‍💼", text: week === 12 ? "Last ₦150k from Daddy. You're on your own now!" : "₦150k allowance from Daddy", tone: "good" });
+  if (p.profile === "richkid" && week <= ALLOWANCE.weeks) {
+    earn(ALLOWANCE.amount);
+    lines.push({ icon: "👨🏾‍💼", text: week === ALLOWANCE.weeks ? `Last ${naira(ALLOWANCE.amount)} from Daddy. You're on your own now!` : `${naira(ALLOWANCE.amount)} allowance from Daddy`, tone: "good" });
   }
 
   // 2. Streams
+  let streamPay = 0;
   for (const s of p.songs) {
     if (s.stage !== "released") continue;
     const a = artistById(p, s.artistId);
@@ -487,9 +580,11 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
     }
     const royalty = a ? a.royalty : 0.4;
     const pay = Math.round(((streams / 1000) * NAIRA_PER_1K * (1 - royalty)) / 100) * 100;
-    if (pay > 0) earn(pay);
+    if (pay > 0) {
+      earn(pay);
+      streamPay += pay;
+    }
   }
-  const streamPay = p.cash - startCash - (p.profile === "richkid" && week <= 12 ? 150_000 : 0);
   if (streamPay > 0) lines.push({ icon: "🎧", text: `Streaming income: ${naira(streamPay)}`, tone: "good" });
 
   // 3. Chart
@@ -497,6 +592,7 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
   const chart = buildChart(p);
   const ranks = new Map(chart.map((r, i) => [r.id, i + 1]));
   for (const n of p.npc) n.rank = ranks.get(n.id) ?? 0;
+  const starGain = new Map<string, number>();
   for (const s of p.songs) {
     if (s.stage !== "released") continue;
     const rank = ranks.get(s.id) ?? 0;
@@ -515,17 +611,17 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
         p.stats.top10++;
         lines.push({ icon: "🔟", text: `"${s.title}" is Top 10!`, tone: "good" });
         applyDeltas(p, { hype: 5, rep: 3 });
-        if (a) a.star = clamp(a.star + 6);
+        if (a) a.star = clamp(a.star + 4);
       }
       if (rank === 1 && prevPeak !== 1) {
         p.stats.no1++;
         lines.push({ icon: "👑", text: `"${s.title}" is No. 1 in Nigeria!`, tone: "good" });
         applyDeltas(p, { hype: 10, rep: 8, gold: 25 });
-        if (a) a.star = clamp(a.star + 10);
+        if (a) a.star = clamp(a.star + 6);
       }
       if (a) {
-        a.star = clamp(a.star + (rank <= 20 ? 1.5 : 0.5));
-        a.mood = clamp(a.mood + 2);
+        starGain.set(a.id, Math.max(starGain.get(a.id) ?? 0, rank <= 10 ? 1.2 : rank <= 25 ? 0.7 : 0.3));
+        a.mood = clamp(a.mood + 1);
       }
     }
     // streaming-farm detection
@@ -543,32 +639,81 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
     s.promo = Math.round(s.promo * 0.6);
   }
 
-  // 4. Bills
-  spend(LIVING_COST);
-  lines.push({ icon: "🍞", text: `Food, transport and data: ${naira(LIVING_COST)}`, tone: "neutral" });
+  // fans: a little growth from the best-charting song each week, a slow fade otherwise
+  for (const a of p.artists) a.star = clamp(Math.round((a.star * 0.985 + (starGain.get(a.id) ?? 0)) * 10) / 10);
+
+  // 4. Shows this week
+  for (const sh of [...p.shows]) {
+    if (sh.week !== week) continue;
+    p.shows = p.shows.filter((x) => x.id !== sh.id);
+    p.flags.lastShow = week;
+    const owed = p.obligations.find((o) => o.kind === "show" && o.ref === sh.artistId);
+    const a = artistById(p, sh.artistId);
+    if (owed || !a) {
+      p.obligations = p.obligations.filter((o) => o !== owed);
+      lines.push({ icon: "🚫", text: `The Sanctuary cancelled ${sh.artistName}'s show: the balance wasn't paid. Deposit lost.`, tone: "bad" });
+      applyDeltas(p, { rep: chill ? -2 : -8, hype: -4 });
+      if (a) a.mood = clamp(a.mood - 12);
+      log(p, "🚫", `Show cancelled (unpaid balance).`, "bad");
+      continue;
+    }
+    const fill = Math.min(1, 0.08 + a.star * 0.006 + p.hype * 0.003 + (p.stats.top10 ? 0.05 : 0));
+    const tickets = Math.round(SHOW.capacity * fill);
+    const take = Math.round((tickets * SHOW.ticket * SHOW.share * fx.demand) / 1000) * 1000;
+    earn(take);
+    p.stats.shows++;
+    a.star = clamp(a.star + 2);
+    a.mood = clamp(a.mood + 15);
+    if (fill >= 0.98) {
+      p.stats.sellouts++;
+      applyDeltas(p, { rep: 5, hype: 6 });
+      lines.push({ icon: "🏟️", text: `SOLD OUT! ${a.name} filled The Sanctuary. Your share: ${naira(take)}`, tone: "good" });
+    } else {
+      applyDeltas(p, { rep: 2, hype: 3 });
+      lines.push({ icon: "🎤", text: `${a.name} played The Sanctuary to ${tickets.toLocaleString("en-NG")} fans. Your share: ${naira(take)}`, tone: "good" });
+    }
+    log(p, "🎤", `${a.name} at The Sanctuary: ${tickets} fans.`, "good");
+  }
+
+  // 5. Bills (season prices: Detty December costs more)
+  const living = Math.round((LIVING_COST * fx.prices) / 100) * 100;
+  spend(living);
+  lines.push({ icon: "🍞", text: `Food, transport and data: ${naira(living)}`, tone: "neutral" });
   if (p.studio >= 2) {
     spend(10_000);
     lines.push({ icon: "⛽", text: "Diesel for the studio gen: ₦10,000", tone: "neutral" });
   }
 
-  // 5. Obligations due this week (or earlier) and not done
+  // 6. Obligations due this week (or earlier) and not done. Chill mode keeps reminders but drops the penalties.
   for (const o of [...p.obligations]) {
-    if (o.dueWeek > week) continue;
+    if (o.dueWeek > week || o.kind === "show") continue;
     o.overdue++;
     const a = o.ref ? artistById(p, o.ref) : undefined;
     if (o.kind === "advance" && a) {
+      if (chill) {
+        lines.push({ icon: "🧾", text: `Reminder: ${a.name}'s advance balance is still unpaid (Law office).`, tone: "neutral" });
+        continue;
+      }
       a.loyalty = clamp(a.loyalty - 15);
       a.mood = clamp(a.mood - 10);
       lines.push({ icon: "😠", text: `${a.name} is angry: advance balance unpaid.`, tone: "bad" });
       if (o.overdue >= 2) removeArtist(p, a, "walked out over the unpaid advance", lines);
     } else if (o.kind === "release" && a) {
+      p.obligations = p.obligations.filter((x) => x.id !== o.id);
+      addObligation(p, { kind: "release", title: `Release a single with ${a.name}`, amount: 0, dueWeek: week + 4, place: "base", ref: a.id });
+      if (chill) {
+        lines.push({ icon: "📅", text: `${a.name} is still waiting for a single. New target: week ${week + 4}.`, tone: "neutral" });
+        continue;
+      }
       a.mood = clamp(a.mood - 20);
       a.loyalty = clamp(a.loyalty - 15);
       applyDeltas(p, { hype: -3 });
       lines.push({ icon: "📅", text: `Missed ${a.name}'s release date. They feel neglected.`, tone: "bad" });
-      p.obligations = p.obligations.filter((x) => x.id !== o.id);
-      addObligation(p, { kind: "release", title: `Release a single with ${a.name}`, amount: 0, dueWeek: week + 4, place: "base", ref: a.id });
     } else if (o.kind === "rent") {
+      if (chill) {
+        lines.push({ icon: "🏚️", text: "Reminder: studio rent is due at Surulere Sound.", tone: "neutral" });
+        continue;
+      }
       if (o.overdue === 1) {
         o.amount = Math.round(o.amount * 1.1);
         lines.push({ icon: "🏚️", text: "Studio rent is late: 10% late fee added.", tone: "bad" });
@@ -580,6 +725,10 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
         applyDeltas(p, { rep: -4 });
       }
     } else if (o.kind === "loan") {
+      if (chill) {
+        lines.push({ icon: "🏦", text: "Reminder: your loan repayment is due at the bank.", tone: "neutral" });
+        continue;
+      }
       o.amount = Math.round(o.amount * 1.05);
       p.loan = Math.round(p.loan * 1.03);
       applyDeltas(p, { rep: -2 });
@@ -587,40 +736,45 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
     }
   }
 
-  // 6. Artists
+  // 7. Artists (season mood; in Chill mode nobody walks out)
   for (const a of [...p.artists]) {
     const since = week - (a.lastReleaseWeek || a.signedWeek);
-    if (since > 8) a.mood = clamp(a.mood - 4);
-    a.mood = clamp(a.mood + (60 - a.mood) * 0.08);
-    if (a.mood < 15 && a.loyalty < 35) removeArtist(p, a, "left for a rival label", lines);
+    if (since > 8) a.mood = clamp(a.mood - (chill ? 2 : 4));
+    a.mood = clamp(a.mood + (60 - a.mood) * 0.08 + fx.mood);
+    if (!chill && a.mood < 15 && a.loyalty < 35) removeArtist(p, a, "left for a rival label", lines);
   }
 
-  // 7. Hype, heat, exposé
-  p.hype = clamp(Math.round(p.hype * 0.96 * 10) / 10);
+  // 8. Hype, heat, exposé
+  p.hype = clamp(Math.round(p.hype * 0.9 * 10) / 10);
   if (p.heat >= 50 && rng(p.seed, "expose", week).chance(p.heat / 220)) {
     lines.push({ icon: "📰", text: "A blog exposed your payola deals. Ouch.", tone: "bad" });
-    applyDeltas(p, { rep: -10, hype: -5 });
+    applyDeltas(p, { rep: chill ? -4 : -10, hype: -5 });
     p.heat = clamp(p.heat - 35);
     log(p, "📰", "Payola exposé.", "bad");
   }
   p.heat = clamp(p.heat - 3);
 
-  // 8. Trend
+  // 9. Trend
   if (week >= p.trend.until) {
     p.trend = p.nextTrend;
     p.nextTrend = makeTrend(p.seed, p.trend.until + 1, p.trend.genre);
     lines.push({ icon: "📱", text: `New ClipTok trend: ${p.trend.tag} (${p.trend.genre})`, tone: "neutral" });
   }
 
-  // 9. Next week
+  // 10. Next week: calendar moves on, new seasons and festivals greet you
+  const before = calDay(p);
   p.week = week + 1;
+  p.calDay = before + DAYS_PER_TURN;
+  const was = new Set(seasonsOn(CALENDAR, before).map((x) => x.id));
+  for (const s of seasonsOn(CALENDAR, p.calDay)) if (!was.has(s.id)) lines.push({ icon: s.emoji, text: `${s.name}: ${s.blurb}`, tone: "neutral" });
+  for (const h of festivalsIn(CALENDAR, p.calDay, p.calDay + DAYS_PER_TURN)) lines.push({ icon: h.f.emoji, text: h.f.greeting, tone: "good" });
   p.energy = 100;
   p.days = DAYS_PER_WEEK;
   p.used = {};
   p.earned = {};
   p.candidates = candidatesFor(p, p.week);
 
-  // 10. Level up
+  // 11. Level up
   const reqs = levelReqs(p);
   if (reqs.length && reqs.every((r) => r.done)) {
     p.level++;
@@ -630,16 +784,20 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
     applyDeltas(p, { gold: 20 * p.level, rep: 3 });
   }
 
-  // 11. Sapa / endings
+  // 12. Sapa / endings (Chill mode: no folding, just a warning)
   if (p.cash < 0) {
     p.stats.sapaWeeks++;
-    lines.push({ icon: "🫙", text: `You're broke (${naira(p.cash)}). Earn at Yaba Hub or the bar. ${4 - p.stats.sapaWeeks} week(s) before the label folds!`, tone: "bad" });
+    lines.push({
+      icon: "🫙",
+      text: chill ? "You're broke. Sell beats at Yaba Hub or DJ at the bar to get back on your feet." : `You're broke (${naira(p.cash)}). Earn at Yaba Hub or the bar. ${4 - p.stats.sapaWeeks} week(s) before the label folds!`,
+      tone: "bad",
+    });
   } else p.stats.sapaWeeks = 0;
-  if (p.stats.sapaWeeks >= 4) end(p, "fold");
+  if (!chill && p.stats.sapaWeeks >= 4) end(p, "fold");
   else if (p.level >= LEVELS.length - 1) end(p, "win");
   else if (p.week > MAX_WEEKS) end(p, "time");
 
-  // 12. Event
+  // 13. Event (held while the tutorial runs)
   if (opts.events && !p.ended && !p.pendingEvent) {
     const ev = rollEvent(p);
     if (ev) {

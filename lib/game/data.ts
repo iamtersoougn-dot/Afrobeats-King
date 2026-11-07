@@ -42,7 +42,8 @@ export const PLACES: Place[] = [
   { id: "mamaput", name: "Mama Put", area: "Yaba", icon: "🍲", blurb: "Eat, rest small and hear the gist.", x: 64, y: 52, minLevel: 0 },
   { id: "law", name: "Law office", area: "Victoria Island", icon: "⚖️", blurb: "Pay artist advances and sort contracts.", x: 74, y: 78, minLevel: 0 },
   { id: "bank", name: "Bank", area: "Victoria Island", icon: "🏦", blurb: "Loans and repayments.", x: 86, y: 70, minLevel: 0 },
-  { id: "creator", name: "Creator house", area: "Lekki", icon: "📱", blurb: "ClipTok challenges with influencers.", x: 90, y: 88, minLevel: 1 },
+  { id: "creator", name: "Creator house", area: "Lekki", icon: "📱", blurb: "ClipTok challenges and music videos.", x: 90, y: 88, minLevel: 1 },
+  { id: "sanctuary", name: "The Sanctuary", area: "Ikeja", icon: "🏛️", blurb: "The 4,000-seat hall. Book shows for your artists.", x: 22, y: 22, minLevel: 1 },
 ];
 export const placeById = (id: PlaceId) => PLACES.find((p) => p.id === id)!;
 
@@ -73,7 +74,7 @@ export const PROFILES: Profile[] = [
     hype: 10,
     rep: 15,
     studio: 2,
-    perks: ["₦2.5m to start", "Home studio: free, better sessions", "₦150k a week from Daddy until week 12", "Low street cred: street acts trust you less"],
+    perks: ["₦2.5m to start", "Home studio: free, better sessions", "₦120k a week from Daddy until week 8", "Low street cred: street acts trust you less"],
     difficulty: "Easier start",
   },
   {
@@ -108,10 +109,15 @@ export interface LabelLevel {
 export const LEVELS: LabelLevel[] = [
   { name: "Bedroom", icon: "🛏️", slots: 1, netWorth: 0, needRank: 0, needArtists: 0, needNo1s: 0, text: "Where it starts." },
   { name: "Studio", icon: "🎚️", slots: 2, netWorth: 1_000_000, needRank: 50, needArtists: 1, needNo1s: 0, text: "A song in the Top 50 and ₦1m net worth." },
-  { name: "Indie", icon: "💿", slots: 4, netWorth: 5_000_000, needRank: 10, needArtists: 2, needNo1s: 0, text: "Two artists, a Top 10 song and ₦5m." },
-  { name: "Major", icon: "🏆", slots: 6, netWorth: 30_000_000, needRank: 1, needArtists: 3, needNo1s: 1, text: "A No. 1 song, three artists and ₦30m." },
-  { name: "Continental", icon: "🌍", slots: 8, netWorth: 150_000_000, needRank: 1, needArtists: 4, needNo1s: 3, text: "Three No. 1s, four artists and ₦150m." },
+  { name: "Indie", icon: "💿", slots: 4, netWorth: 3_000_000, needRank: 10, needArtists: 2, needNo1s: 0, text: "Two artists, a Top 10 song and ₦3m." },
+  { name: "Major", icon: "🏆", slots: 6, netWorth: 30_000_000, needRank: 1, needArtists: 3, needNo1s: 2, text: "Two No. 1 songs, three artists and ₦30m." },
+  { name: "Continental", icon: "🌍", slots: 8, netWorth: 100_000_000, needRank: 1, needArtists: 4, needNo1s: 4, text: "Four No. 1s, four artists and ₦100m." },
 ];
 
 export const STUDIO_LEASE = { deposit: 150_000, rent: 100_000, every: 4 };
+/** The Sanctuary: deposit to book, balance due by show week; label keeps a share of the door. */
+export const SHOW = { deposit: 400_000, balance: 800_000, weeksAhead: 3, capacity: 4_000, ticket: 3_000, share: 0.35, gap: 6, minStar: 25 };
+export const VIDEO = { cost: 250_000 };
+/** Rich kid only: Daddy's weekly allowance, for the first few weeks. */
+export const ALLOWANCE = { amount: 120_000, weeks: 8 };
 export const LOAN = { amount: 250_000, weekly: 25_000, weeks: 12 };

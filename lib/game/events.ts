@@ -3,7 +3,9 @@
  * Every event id rolled here must exist in EVENTS, or the game would wait on a choice it can't show.
  * The balance bot checks this on every run.
  */
-import { latestRelease } from "./select";
+import { calDay, chillOn, latestRelease } from "./select";
+import { eventWeight } from "../kit/calendar";
+import { CALENDAR, CHILL, DAYS_PER_TURN } from "./kit.config";
 import { rng, type Rng } from "./rng";
 import type { Deltas, Player, Tone } from "./types";
 import { clamp, naira } from "./util";
@@ -230,10 +232,12 @@ function buyout(p: Player) {
 
 export const pickEvent = (id: string) => EVENTS.find((e) => e.id === id);
 
-/** Seeded: the same run always gets the same events. */
+/** Seeded: the same run always gets the same events. Seasons change the odds; Chill mode is gentler. */
 export function rollEvent(p: Player): string | undefined {
   const r = rng(p.seed, "event", p.week);
-  if (!r.chance(0.45)) return undefined;
-  const ok = EVENTS.filter((e) => e.when(p) && (p.eventsSeen[e.id] === undefined || p.week - p.eventsSeen[e.id] >= e.cooldown));
-  return r.weighted(ok, (e) => e.weight)?.id;
+  const chill = chillOn(p);
+  if (!r.chance(0.45 * (chill ? CHILL.rules.eventOdds : 1))) return undefined;
+  const d = calDay(p);
+  const ok = EVENTS.filter((e) => e.when(p) && (p.eventsSeen[e.id] === undefined || p.week - p.eventsSeen[e.id] >= e.cooldown) && !(chill && CHILL.rules.never.includes(e.id)));
+  return r.weighted(ok, (e) => e.weight * eventWeight(CALENDAR, e.id, d, d + DAYS_PER_TURN) * (chill && CHILL.rules.setbacks.includes(e.id) ? CHILL.rules.setbackWeight : 1))?.id;
 }

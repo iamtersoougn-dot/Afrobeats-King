@@ -29,8 +29,10 @@ export function candidatesFor(p: Player, week: number): Artist[] {
   for (let i = 0; i < 3; i++) {
     const r = rng(p.seed, "cand", week, i);
     const genre = r.chance(0.3) ? p.trend.genre : r.pick(GENRE_IDS);
-    const talent = Math.round(Math.min(95, r.range(25, 55) + lvl * 9 + (i === 2 ? 8 : 0)));
-    const star = Math.round(Math.min(90, r.range(2, 18) + lvl * 10 + (i === 2 ? 6 : 0)));
+    // the very first act is always one a broke producer can afford
+    const first = week === 1 && i === 0;
+    const talent = Math.round(Math.min(first ? 40 : 95, r.range(25, 55) + lvl * 9 + (i === 2 ? 8 : 0)));
+    const star = Math.round(Math.min(first ? 8 : 90, r.range(2, 18) + lvl * 10 + (i === 2 ? 6 : 0)));
     const ego = Math.round(r.range(15, 70) + star * 0.3);
     const street = genre === "streethop" || genre === "drill";
     const loyaltyBase = r.range(45, 70) + (street ? (p.cred - 25) * 0.4 : 0);

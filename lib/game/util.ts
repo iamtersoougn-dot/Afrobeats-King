@@ -16,6 +16,17 @@ function trim(x: number) {
   return x >= 100 ? x.toFixed(0) : x >= 10 ? x.toFixed(1).replace(/\.0$/, "") : x.toFixed(2).replace(/\.?0+$/, "");
 }
 
+/** Very short money for tight spots (the stats bar): ₦950, ₦9.6k, ₦56k, ₦2.5m. */
+export function nairaShort(n: number): string {
+  const sign = n < 0 ? "−" : "";
+  const v = Math.abs(Math.round(n));
+  if (v >= 1_000_000_000) return `${sign}₦${trim(v / 1_000_000_000)}b`;
+  if (v >= 1_000_000) return `${sign}₦${trim(v / 1_000_000)}m`;
+  if (v >= 10_000) return `${sign}₦${Math.round(v / 1000)}k`;
+  if (v >= 1_000) return `${sign}₦${(v / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return `${sign}₦${v}`;
+}
+
 export const streamsText = (n: number) => (n >= 1_000_000 ? `${trim(n / 1_000_000)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
 
 /** Ear grows slower as it gets higher; the producer learns 25% faster. */
@@ -39,6 +50,8 @@ export function applyDeltas(p: Player, d: Deltas | undefined): Deltas {
     if (!v) continue;
     if (k === "ear") v = earGain(p, v);
     if (k === "rep" && v > 0 && p.rep > 60) v *= p.rep > 85 ? 0.3 : 0.6;
+    // buzz is easy to start and hard to max out
+    if (k === "hype" && v > 0 && p.hype > 50) v *= p.hype > 80 ? 0.25 : 0.5;
     const before = p[k as "energy"];
     const after = clamp(Math.round((before + v) * 10) / 10);
     (p as unknown as Record<string, number>)[k] = after;

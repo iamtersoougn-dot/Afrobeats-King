@@ -4,31 +4,39 @@
  *        RUNS=500 npm run balance
  * Fails (exit 1) if a run freezes, an event id is missing, or a strategy breaks the money caps.
  */
-import { ACTIONS, actionLock, createPlayer, doAction, endWeek, netWorth, payObligation, resolveEvent, signArtist, signLock } from "../lib/game/engine";
+import { ACTIONS, actionLock, createPlayer, doAction, dropArtist, endWeek, netWorth, slots, payObligation, resolveEvent, signArtist, signLock } from "../lib/game/engine";
 import { pickEvent } from "../lib/game/events";
+import { currentGoal } from "../lib/game/goals";
 import { LEVELS, MAX_WEEKS } from "../lib/game/data";
 import type { Player, ProfileId } from "../lib/game/types";
 
-type Strategy = "grinder" | "risky" | "idle";
+type Strategy = "grinder" | "risky" | "idle" | "chill";
 const RUNS = Number(process.env.RUNS ?? 200);
 const problems: string[] = [];
 
 function playWeek(p: Player, s: Strategy) {
   if (s === "idle") return;
+  if (s === "chill") s = "grinder";
   // pay what's due
   for (const o of [...p.obligations].sort((a, b) => a.dueWeek - b.dueWeek)) if (o.amount > 0 && o.dueWeek <= p.week + 1) payObligation(p, o.id);
+  // swap the weakest artist for a much better open-mic act when the roster is full
+  const best = [...p.candidates].sort((a, b) => b.talent + b.star - (a.talent + a.star))[0];
+  const weakest = [...p.artists].sort((a, b) => a.talent + a.star - (b.talent + b.star))[0];
+  if (best && weakest && p.artists.length >= slots(p) && best.talent + best.star > weakest.talent + weakest.star + 35) dropArtist(p, weakest.id);
   // sign if there's room
   for (const c of [...p.candidates].sort((a, b) => b.talent + b.star - (a.talent + a.star))) if (!signLock(p, c)) signArtist(p, c.id);
   const order =
     s === "risky"
-      ? ["release", "pro_mix", "mix", "pro_session", "record", "payola", "cliptok", "radio", "interview", "sell_beat", "mix_others", "dj", "eat", "beat"]
-      : ["release", "pro_mix", "mix", "pro_session", "record", "cliptok", "radio", "interview", "sell_beat", "mix_others", "dj", "gist", "eat", "beat", "plugins", "network"];
+      ? ["release", "pro_mix", "mix", "pro_session", "record", "book_show", "payola", "shoot_video", "cliptok", "radio", "interview", "sell_beat", "mix_others", "dj", "eat", "beat"]
+      : ["release", "pro_mix", "mix", "pro_session", "record", "book_show", "shoot_video", "cliptok", "radio", "interview", "sell_beat", "mix_others", "dj", "gist", "eat", "beat", "plugins", "network"];
   for (let guard = 0; guard < 40; guard++) {
     const next = order.map((id) => ACTIONS.find((a) => a.id === id)!).find((a) => {
       if (actionLock(p, a)) return false;
-      // keep a cash buffer for bills before spending on promo
+      // keep a cash buffer for bills, and save part of the way to the next level's net worth before spending on promo
       const cost = typeof a.cost === "number" ? a.cost : 0;
-      return cost === 0 || p.cash - cost > 60_000;
+      const goal = LEVELS[p.level + 1]?.netWorth ?? 0;
+      const essential = ["pro_session", "pro_mix", "book_show"].includes(a.id);
+      return cost === 0 || p.cash - cost > 60_000 + (essential ? 0 : goal * 0.35);
     });
     if (!next) break;
     const r = doAction(p, next.id);
@@ -38,11 +46,21 @@ function playWeek(p: Player, s: Strategy) {
 }
 
 function run(profile: ProfileId, s: Strategy, i: number) {
-  const p = createPlayer({ name: "Bot", label: "Bot Records", profile, seed: `bot-${profile}-${s}-${i}` });
+  const p = createPlayer({ name: "Bot", label: "Bot Records", profile, seed: `bot-${profile}-${s}-${i}`, chill: s === "chill" });
   let peakCash = p.cash;
   let levelWeek: number[] = [];
   for (let w = 0; w < MAX_WEEKS + 2 && !p.ended; w++) {
     const before = p.week;
+    // the objective banner must always point at something doable
+    for (let k = 0; k < 3; k++) {
+      const g = currentGoal(p);
+      if (g.action) {
+        const a = ACTIONS.find((x) => x.id === g.action);
+        const why = a ? actionLock(p, a) : "missing action";
+        if (why) problems.push(`goal "${g.text}" points at ${g.action}, which is locked: ${why}`);
+        else doAction(p, g.action);
+      }
+    }
     playWeek(p, s);
     if (p.pendingEvent) {
       const ev = pickEvent(p.pendingEvent);
@@ -76,7 +94,7 @@ const fmt = (n: number) => (Number.isNaN(n) ? "—" : n >= 1e6 ? `₦${(n / 1e6)
 
 console.log(`Afrobeats King balance bot: ${RUNS} runs per profile and strategy\n`);
 for (const profile of ["richkid", "producer"] as ProfileId[]) {
-  for (const s of ["grinder", "risky", "idle"] as Strategy[]) {
+  for (const s of ["grinder", "risky", "chill", "idle"] as Strategy[]) {
     const res = Array.from({ length: RUNS }, (_, i) => run(profile, s, i));
     const ends = { win: 0, fold: 0, time: 0 };
     for (const r of res) if (r.p.ended) ends[r.p.ended.kind]++;

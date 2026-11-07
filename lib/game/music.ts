@@ -6,7 +6,7 @@ import type { Artist, Genre, NpcSong, Player, Song, Trend } from "./types";
 /** Hard cap on any one song's weekly streams, so no combination can run away. */
 export const STREAM_CAP = 2_500_000;
 /** Label's naira per 1,000 streams before the artist's royalty. */
-export const NAIRA_PER_1K = 900;
+export const NAIRA_PER_1K = 800;
 
 export function makeTrend(seed: string, from: number, prev?: Genre): Trend {
   const r = rng(seed, "trend", from);
@@ -17,10 +17,10 @@ export function makeTrend(seed: string, from: number, prev?: Genre): Trend {
 
 export function makeNpc(seed: string, week: number, i: number, trend: Genre): NpcSong {
   const r = rng(seed, "npc", week, i);
-  // log-uniform peak between 12k and 900k; a few monsters
-  let base = Math.exp(r.range(Math.log(12_000), Math.log(900_000)));
+  // log-uniform peak between 15k and 1.1M; a few monsters
+  let base = Math.exp(r.range(Math.log(15_000), Math.log(1_100_000)));
   const genre = r.chance(0.35) ? trend : r.pick(GENRE_IDS);
-  if (genre === trend) base *= 1.3;
+  if (genre === trend) base *= 1.25;
   return { id: `n${week}_${i}`, title: songTitle(r), artist: artistName(r), label: r.pick(RIVAL_LABELS), genre, base: Math.round(base), born: week, weekly: 0, rank: 0 };
 }
 
@@ -44,28 +44,34 @@ const npcStreams = (s: NpcSong, week: number, seed: string) => {
 };
 
 /** Fit of a song's genre to the hot trend. */
-export const trendFit = (g: Genre, t: Trend) => (g === t.genre ? 1.6 : 1);
+export const trendFit = (g: Genre, t: Trend) => (g === t.genre ? 1.35 : 1);
 
-/** Weekly streams for one of the player's released songs (pure, seeded). */
+/**
+ * Weekly streams for one of the player's released songs (pure, seeded).
+ * Multipliers are kept gentle so they can't stack into a runaway: quality matters most,
+ * star power, hype, promo and the trend each add a bounded push.
+ */
 export function songStreams(p: Player, s: Song, a: Artist | undefined, week: number): { streams: number; viral: boolean } {
   if (s.stage !== "released" || s.releaseWeek === undefined) return { streams: 0, viral: false };
   const age = week - s.releaseWeek;
   const q = s.quality;
-  const base = 1_500 + q * q * 22; // q50 ≈ 56k, q80 ≈ 142k, q100 ≈ 222k
-  const star = 0.55 + (a ? a.star : 20) / 100;
-  const hype = 1 + p.hype / 120;
-  const promo = 1 + s.promo / 100;
-  const decay = Math.pow(0.85, Math.max(0, age));
+  const base = 600 + q * q * 16; // q50 ≈ 40k, q75 ≈ 91k, q90 ≈ 130k
+  const star = 0.4 + (a ? a.star : 15) / 100; // 0.4 – 1.4
+  const hype = 1 + p.hype / 250; // up to 1.4
+  const promo = 1 + Math.sqrt(Math.max(0, s.promo)) / 20; // promo 200 → 1.7
+  const video = s.video ? 1.2 : 1;
+  const rise = age === 0 ? 0.8 : 1;
+  const decay = Math.pow(0.84, Math.max(0, age - 1));
   const r = rng(p.seed, "ss", s.id, week);
-  const noise = r.range(0.85, 1.2);
-  let streams = base * star * hype * trendFit(s.genre, p.trend) * promo * decay * noise;
+  const noise = r.range(0.85, 1.15);
+  let streams = base * star * hype * trendFit(s.genre, p.trend) * promo * video * rise * decay * noise;
   let viral = false;
   // one viral moment per song, more likely on-trend with good quality and promo
-  if (!s.viral && age <= 6 && q >= 45) {
-    const pv = 0.015 + (s.genre === p.trend.genre ? 0.03 : 0) + s.promo / 4000 + p.hype / 3000;
+  if (!s.viral && age <= 5 && q >= 55) {
+    const pv = 0.01 + (s.genre === p.trend.genre ? 0.025 : 0) + s.promo / 8000 + p.hype / 5000;
     if (r.chance(pv)) {
       viral = true;
-      streams *= 3;
+      streams *= 2.6;
     }
   }
   return { streams: Math.min(STREAM_CAP, Math.round(streams)), viral };
