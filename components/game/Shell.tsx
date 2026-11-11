@@ -33,6 +33,7 @@ export default function Shell() {
   const p = useGame((s) => s.player)!;
   const tab = useGame((s) => s.tab);
   const place = useGame((s) => s.place);
+  const tourOn = useGame((s) => s.tour !== null);
   const sheet = useGame((s) => s.sheet);
   const meta = useGame((s) => s.meta);
   const setTab = useGame((s) => s.setTab);
@@ -63,7 +64,7 @@ export default function Shell() {
       <Hud />
       <button data-tour="goal" className="plate flex min-h-[46px] w-full items-center gap-2 px-3 text-left" onClick={() => go(goal)} aria-label={`Objective: ${goal.text}`}>
         <span className="text-xl">{goal.icon}</span>
-        <span className="min-w-0 flex-1 text-[14px] font-extrabold leading-tight">{goal.text}</span>
+        <span className="line-clamp-2 min-w-0 flex-1 text-[14px] font-extrabold leading-tight">{goal.text}</span>
         {goal.chip && <span className={`shrink-0 rounded-md px-2 py-1 text-[11.5px] font-black ${goal.urgent ? "bg-okada text-white" : "bg-danfo-ink text-danfo"}`}>{goal.chip}</span>}
       </button>
       <Floats />
@@ -88,7 +89,8 @@ export default function Shell() {
       {place && <PlaceSheet id={place} />}
       <Vignette />
       {sheet && <Sheets which={sheet} />}
-      <Tour />
+      {/* remounts each time the tutorial starts, so its step counter starts fresh */}
+      {tourOn && <Tour />}
       <LiveBeat />
     </div>
   );

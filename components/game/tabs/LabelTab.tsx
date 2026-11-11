@@ -7,7 +7,7 @@ import { GENRES, LEVELS, placeById } from "@/lib/game/data";
 import { dueText, levelReqs, netWorth, payLock, slots } from "@/lib/game/engine";
 import { naira, streamsText } from "@/lib/game/util";
 import { ArtistCard } from "../PlaceSheet";
-import { Bar, Chip, Empty, Section, Segments } from "../ui";
+import { Bar, Chip, Empty, Fold, Section, Segments } from "../ui";
 
 type Seg = "roster" | "songs" | "chart" | "bills";
 
@@ -149,7 +149,11 @@ function Songs() {
   if (!list.length) return <div className="mt-4"><Empty icon="🎙️" text="No songs yet. Record 3 sessions at your base or Surulere Sound to make your first single." /></div>;
   return (
     <ul className="mt-3 grid gap-2">
-      {list.map((s) => {
+      <Fold
+        items={list}
+        limit={6}
+        more={(n) => `Show ${n} older song${n === 1 ? "" : "s"}`}
+        render={(s) => {
         const g = GENRES[s.genre];
         return (
           <li key={s.id} className="rounded-2xl bg-night-3 px-3 py-2.5">
@@ -179,23 +183,27 @@ function Songs() {
             )}
           </li>
         );
-      })}
+        }}
+      />
     </ul>
   );
 }
 
 function Chart() {
   const p = useGame((s) => s.player)!;
-  const rows = buildChart(p);
+  const [full, setFull] = useState(false);
+  // the Top 10, plus any of your songs further down; the full 50 on request
+  const rows = buildChart(p).map((r, i) => ({ ...r, pos: i + 1 }));
+  const shown = full ? rows : rows.filter((r) => r.pos <= 10 || r.mine);
   return (
     <div className="mt-3">
       <p className="mb-2 text-[12.5px] text-lilac">
         Tunely Top 50, Nigeria. Hot right now: {GENRES[p.trend.genre].icon} {GENRES[p.trend.genre].name} ({p.trend.tag}).
       </p>
       <ol className="grid gap-1">
-        {rows.map((r, i) => (
+        {shown.map((r) => (
           <li key={r.id} className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-[13px] ${r.mine ? "bg-danfo/15 ring-1 ring-danfo" : "bg-night-3"}`}>
-            <span className="font-display w-7 text-right text-[13px] font-bold text-lilac">{i + 1}</span>
+            <span className="font-display w-7 text-right text-[13px] font-bold text-lilac">{r.pos}</span>
             <span className="min-w-0 flex-1 truncate">
               <b>{r.title}</b> · {r.artist}
             </span>
@@ -203,6 +211,9 @@ function Chart() {
           </li>
         ))}
       </ol>
+      <button className="btn btn-ghost mt-2 w-full text-[13.5px]" onClick={() => setFull(!full)} aria-expanded={full}>
+        {full ? "Show the Top 10 only" : "Show the full Top 50"}
+      </button>
     </div>
   );
 }

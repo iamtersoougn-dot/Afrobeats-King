@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { lowEndDevice } from "@/lib/device";
 import { useGame } from "@/lib/store";
 
@@ -37,6 +37,39 @@ export const isNight = (h: number) => h >= 19 || h < 6;
 const noop = () => () => {};
 export function useSmooth(): boolean {
   const pref = useGame((s) => s.meta.smooth);
+  const measured = useGame((s) => s.meta.autoSmooth);
   const auto = useSyncExternalStore(noop, lowEndDevice, () => false);
-  return pref ?? auto;
+  return pref ?? (auto || measured);
+}
+
+/**
+ * Watches the first few seconds on the map. A cheap phone (by its specs) or a low frame rate
+ * turns Smooth mode on, with a short notice the first time. Does nothing if the player chose a setting.
+ */
+export function useFrameCheck(active: boolean) {
+  const pref = useGame((s) => s.meta.smooth);
+  const noticed = useGame((s) => s.meta.smoothNoticed);
+  const autoSmooth = useGame((s) => s.autoSmooth);
+  useEffect(() => {
+    if (!active || pref !== null || noticed) return;
+    if (lowEndDevice()) {
+      const t = setTimeout(() => autoSmooth("phone"), 1500);
+      return () => clearTimeout(t);
+    }
+    let frames = 0;
+    let start = 0;
+    let raf = 0;
+    const tick = (t: number) => {
+      if (!start) start = t;
+      frames++;
+      if (t - start < 3000) raf = requestAnimationFrame(tick);
+      else if (document.visibilityState === "visible" && (frames * 1000) / (t - start) < 40) autoSmooth("fps");
+    };
+    // wait for the first screen to settle before measuring
+    const wait = setTimeout(() => (raf = requestAnimationFrame(tick)), 2000);
+    return () => {
+      clearTimeout(wait);
+      cancelAnimationFrame(raf);
+    };
+  }, [active, pref, noticed, autoSmooth]);
 }

@@ -9,7 +9,7 @@ export interface Product {
   gold: number;
   vipDays?: number;
   removeAds?: boolean;
-  cash?: number; // in-game naira bonus (small, once)
+  cash?: number; // not used: real money never buys in-game naira (kept so old purchases still read)
   items?: string[]; // cosmetics unlocked
   pass?: boolean; // premium Tour Pass for the current month
   passTiers?: number;
@@ -20,7 +20,7 @@ export interface Product {
 }
 
 export const PRODUCTS: Product[] = [
-  { id: "starter", name: "Bedroom starter pack", priceNaira: 500, gold: 150, cash: 50_000, items: ["snapback"], badge: "One-time · best value", desc: "150 gold, ₦50k in-game cash and a studio snapback", oncePerAccount: true },
+  { id: "starter", name: "Bedroom starter pack", priceNaira: 500, gold: 220, items: ["snapback", "neon"], badge: "One-time · best value", desc: "220 gold, a studio snapback and neon studio lights", oncePerAccount: true },
   { id: "gold_s", name: "Small change", priceNaira: 500, gold: 80, desc: "80 gold" },
   { id: "gold_m", name: "Show money", priceNaira: 1_500, gold: 280, badge: "Popular", desc: "280 gold (+17% bonus)" },
   { id: "gold_l", name: "Tour budget", priceNaira: 4_000, gold: 850, desc: "850 gold (+33% bonus)" },
@@ -29,7 +29,7 @@ export const PRODUCTS: Product[] = [
   { id: "pass", name: "Tour Pass (this month)", priceNaira: 1_500, gold: 0, pass: true, badge: "Season pass", desc: "Unlock the premium track: 500+ gold, tour jacket and gold mic chain" },
   { id: "pass_plus", name: "Tour Pass + 10 tiers", priceNaira: 3_500, gold: 0, pass: true, passTiers: 10, badge: "Skip ahead", desc: "Premium track plus 10 tiers unlocked now" },
   { id: "noads", name: "Remove ads forever", priceNaira: 2_000, gold: 0, removeAds: true, desc: "No more interstitial ads. Rewarded ads stay optional.", oncePerAccount: true },
-  { id: "offer_sapa", name: "Sapa relief pack", priceNaira: 300, gold: 60, cash: 30_000, offer: true, desc: "60 gold + ₦30,000 in-game cash. Sapa no go kill your label.", oncePerAccount: true },
+  { id: "offer_sapa", name: "Comeback pack", priceNaira: 300, gold: 120, offer: true, desc: "120 gold: refill your energy and hustle your way back.", oncePerAccount: true },
   { id: "offer_no1", name: "Number One bundle", priceNaira: 1_000, gold: 300, items: ["crown"], offer: true, desc: "300 gold + the crown, for your first No. 1", oncePerAccount: true },
   { id: "offer_level", name: "Level-up bundle", priceNaira: 1_500, gold: 400, vipDays: 7, offer: true, desc: "400 gold + 7 days of the Odogwu Pass", oncePerAccount: true },
   { id: "offer_comeback", name: "Welcome back bundle", priceNaira: 700, gold: 200, offer: true, desc: "200 gold to pick up where you left off", oncePerAccount: true },
@@ -44,7 +44,7 @@ export interface OfferDef {
   hours: number;
 }
 export const OFFERS: OfferDef[] = [
-  { id: "sapa", productId: "offer_sapa", title: "🫙 Sapa relief", pitch: "Your label is broke. Small help for a small price.", hours: 12 },
+  { id: "sapa", productId: "offer_sapa", title: "🫙 Comeback pack", pitch: "Broke this week? Gold for an energy refill so you can hustle back.", hours: 12 },
   { id: "no1", productId: "offer_no1", title: "👑 Number One!", pitch: "You topped the chart. Wear the crown.", hours: 24 },
   { id: "level", productId: "offer_level", title: "🎉 Level up special", pitch: "Your label just grew. Celebrate with gold and VIP.", hours: 24 },
   { id: "comeback", productId: "offer_comeback", title: "👋🏾 Welcome back", pitch: "We missed you! A little boost to get going again.", hours: 24 },

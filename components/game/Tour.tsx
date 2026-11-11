@@ -54,16 +54,20 @@ export default function Tour() {
   const finish = useGame((s) => s.finishTour);
   const list = useMemo(() => (p ? steps(p) : []), [p?.name, p?.label]); // eslint-disable-line react-hooks/exhaustive-deps
   const [rect, setRect] = useState<DOMRect | null>(null);
+  // steps jumped over because they weren't needed (e.g. you'd already signed someone); counted out of "Step x of y"
+  const [skipped, setSkipped] = useState<string[]>([]);
   const [vh, setVh] = useState(800);
   const scrolled = useRef<{ id: string; at: number; n: number }>({ id: "", at: 0, n: 0 });
   const cur = step !== null ? list[step] : null;
 
-  const advance = useCallback(() => {
+  const advance = useCallback((jumpCurrent = false) => {
     const s = useGame.getState();
     const pl = s.player;
     if (s.tour === null || !pl) return;
     let n = s.tour + 1;
-    while (n < list.length && list[n].skip?.(pl)) n++;
+    const jumped: string[] = jumpCurrent ? [list[s.tour].id] : [];
+    while (n < list.length && list[n].skip?.(pl)) jumped.push(list[n++].id);
+    if (jumped.length) setSkipped((x) => [...x, ...jumped]);
     if (n >= list.length) finish(false);
     else setTour(n);
   }, [list, finish, setTour]);
@@ -105,7 +109,7 @@ export default function Tour() {
     if (!cur || cur.mode !== "tap" || !cur.target) return;
     const onClick = (e: MouseEvent) => {
       const el = findVisible(cur.target!);
-      if (el && e.target instanceof Node && el.contains(e.target)) setTimeout(advance, 80);
+      if (el && e.target instanceof Node && el.contains(e.target)) setTimeout(() => advance(), 80);
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
@@ -113,14 +117,18 @@ export default function Tour() {
 
   useEffect(() => {
     const pl = useGame.getState().player;
-    if (cur && pl && cur.skip?.(pl)) advance();
+    if (!cur || !pl || !cur.skip?.(pl)) return;
+    const t = setTimeout(() => advance(true), 0);
+    return () => clearTimeout(t);
   }, [cur?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!cur || !p) return null;
   const pad = 6;
   const hole = rect ? { x: rect.left - pad, y: rect.top - pad, w: rect.width + pad * 2, h: rect.height + pad * 2 } : null;
   const below = hole ? hole.y + hole.h / 2 < vh * 0.5 : false;
-  const shown = list.filter((s) => !s.skip?.(p));
+  // past steps count unless they were jumped over; future steps count unless they'd be jumped over now
+  const curIdx = step ?? 0;
+  const shown = list.filter((s, i) => (i <= curIdx ? !skipped.includes(s.id) : !s.skip?.(p)));
   const index = Math.max(1, shown.findIndex((s) => s.id === cur.id) + 1);
   const dim = "rgba(8,4,24,0.74)";
   return (
@@ -154,7 +162,7 @@ export default function Tour() {
         <div className="font-display mt-1 text-[18px] font-bold leading-tight">{cur.title}</div>
         <p className="mt-1 text-[14.5px] leading-snug text-paper/90">{cur.body}</p>
         {cur.mode === "next" ? (
-          <button className="btn btn-danfo mt-3 min-h-[48px] w-full text-[16px]" onClick={advance} autoFocus>
+          <button className="btn btn-danfo mt-3 min-h-[48px] w-full text-[16px]" onClick={() => advance()} autoFocus>
             {cur.id === "intro" ? "Start" : cur.id === "done" ? "Let's go!" : "Next"}
           </button>
         ) : (

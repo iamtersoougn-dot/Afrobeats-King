@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useGame } from "@/lib/store";
 import { ACTIONS, actionCost, actionLock, canRoutine, dueText, payLock, signLock, type ActionDef } from "@/lib/game/engine";
 import { GENRES, placeById } from "@/lib/game/data";
@@ -7,10 +8,11 @@ import { ROUTINES } from "@/lib/game/kit.config";
 import { canQuick, isRoutine, routineLock } from "@/lib/kit/routines";
 import type { Artist, PlaceId, Player } from "@/lib/game/types";
 import { naira } from "@/lib/game/util";
-import { ActivityStage } from "@/components/world/scenes";
+import { ActivityStage, ACT } from "@/components/world/scenes";
+import { latestRelease, songInProgress } from "@/lib/game/select";
 import Figure, { toFigLook } from "@/components/world/Figure";
 import { isNight, useLagosHour } from "@/components/world/useEnv";
-import { Chip, Section, Sheet } from "./ui";
+import { Chip, Section, Sheet, toneText } from "./ui";
 
 /** A place: its scene, what you owe here, who you can sign here, and what you can do. */
 export default function PlaceSheet({ id }: { id: PlaceId }) {
@@ -95,6 +97,7 @@ export function ActionCard({ p, a }: { p: Player; a: ActionDef }) {
           </div>
         </div>
       </div>
+      <ResultStrip p={p} actionId={a.id} />
       <div className="mt-2 flex gap-2">
         <button data-tour={`action-${a.id}`} className="btn btn-danfo min-w-0 flex-1 text-[14px]" disabled={!!why} onClick={() => act(a.id)}>
           {why ?? "Do it"}
@@ -109,6 +112,51 @@ export function ActionCard({ p, a }: { p: Player; a: ActionDef }) {
             🔁
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The result of the action you just did, shown inside its own card: a short scene, the result line and what changed.
+ * It never sits on top of other buttons, and it stays until your next action so nothing jumps while you read.
+ */
+function ResultStrip({ p, actionId }: { p: Player; actionId: string }) {
+  const v = useGame((s) => s.vignette);
+  const tour = useGame((s) => s.tour);
+  const night = isNight(useLagosHour());
+  // words first; the little scene follows a moment later so the tap feels instant on slow phones
+  const [stageFor, setStageFor] = useState<number | null>(null);
+  const vid = v?.id ?? null;
+  useEffect(() => {
+    if (vid === null) return;
+    const t = setTimeout(() => setStageFor(vid), 120);
+    return () => clearTimeout(t);
+  }, [vid]);
+  if (!v || v.actionId !== actionId) return null;
+  const song = songInProgress(p) ?? latestRelease(p);
+  const artist = (song && p.artists.find((x) => x.id === song.artistId)) ?? p.artists[0];
+  return (
+    <div className="mt-2 overflow-hidden rounded-xl border border-line bg-night" aria-live="polite">
+      {tour === null && (
+        <div className="h-[104px]">
+          {stageFor === v.id && (
+          <ActivityStage place={v.place} act={ACT[v.actionId] ?? { pose: "idle" }} boss={toFigLook(p.look)} artist={artist ? { skin: artist.look.skin, hue: artist.look.hue, hair: artist.look.hair } : { skin: "#6e452b", hue: 160, hair: 3 }} night={night} />
+          )}
+        </div>
+      )}
+      <div className="px-3 py-2">
+        <p className={`text-[13.5px] font-bold leading-snug ${toneText[v.tone]}`}>{v.text}</p>
+        {v.chips.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {v.chips.map((c, i) => (
+              <span key={i} className={`rounded-full bg-night-3 px-2 py-0.5 text-[12.5px] font-extrabold ${toneText[c.tone]}`}>
+                {c.text}
+              </span>
+            ))}
+          </div>
+        )}
+        {v.extra && <p className="mt-1 text-[12.5px] font-semibold text-danfo">{v.extra}</p>}
       </div>
     </div>
   );

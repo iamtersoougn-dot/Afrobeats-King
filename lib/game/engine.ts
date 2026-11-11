@@ -3,7 +3,7 @@
  * No React, no Date.now/Math.random: every roll is seeded (rng.ts) so runs replay and the balance bot is fair.
  */
 import { candidatesFor } from "./artists";
-import { ALLOWANCE, DAYS_PER_WEEK, LEVELS, LIVING_COST, LOAN, MAX_WEEKS, PLACES, SESSIONS_PER_SONG, SHOW, STUDIO_LEASE, VIDEO, profileById } from "./data";
+import { ALLOWANCE, CHART_SIZE, DAYS_PER_WEEK, HUSTLE, SPIN_PAY, LEVELS, LIVING_COST, LOAN, MAX_WEEKS, PLACES, SESSIONS_PER_SONG, SHOW, STUDIO_LEASE, VIDEO, profileById } from "./data";
 import { CALENDAR, DAYS_PER_TURN, NO_ROUTINE, ROUTINES, START_DAY } from "./kit.config";
 import { festivalsIn, seasonsOn } from "../kit/calendar";
 import { scaleGains } from "../kit/routines";
@@ -13,7 +13,7 @@ import { rng, type Rng } from "./rng";
 import { pickEvent, rollEvent } from "./events";
 import { artistById, calDay, chillOn, effectsNow, latestRelease, netWorth, releasedSongs, slots, songInProgress } from "./select";
 import type { ActionResult, Artist, BossLook, Deltas, Obligation, PlaceId, Player, ProfileId, Tone, WeekRecap } from "./types";
-import { applyDeltas, clamp, naira, streamsText } from "./util";
+import { aOrAn, applyDeltas, clamp, naira, streamsText } from "./util";
 
 export const SAVE_VERSION = 2;
 export const clone = <T,>(x: T): T => structuredClone(x);
@@ -106,6 +106,8 @@ export interface ActionDef {
 }
 
 const used = (p: Player, id: string) => p.used[id] ?? 0;
+/** Hustle limits grow a little with the label, so side jobs stay a safety net and music stays the main money. */
+const hustleCap = (p: Player, base: number) => Math.round(base * (1 + p.level * 0.5));
 /** Diminishing returns for doing the same paid thing again in one week. */
 const dim = (p: Player, id: string, steps = [1, 0.7, 0.4, 0.2]) => steps[Math.min(used(p, id), steps.length - 1)];
 /** Weekly earnings cap per source. */
@@ -242,7 +244,7 @@ export const ACTIONS: ActionDef[] = [
   {
     id: "sell_beat", place: "hub", icon: "💿", label: "Sell a beat", desc: "Upcoming artists pay for beats. Better ear, better price.", energy: 20, max: 3,
     run: (p) => {
-      const pay = capEarn(p, "beats", (12_000 + p.ear * 700) * dim(p, "sell_beat"), 200_000);
+      const pay = capEarn(p, "beats", (HUSTLE.beat + p.ear * HUSTLE.beatPerEar) * dim(p, "sell_beat"), hustleCap(p, HUSTLE.beatCap));
       return { text: pay ? `Sold a beat for ${naira(pay)}.` : "Nobody's buying more beats this week.", tone: pay ? "good" : "neutral", deltas: { cash: pay, ear: 0.5 } };
     },
   },
@@ -250,7 +252,7 @@ export const ACTIONS: ActionDef[] = [
     id: "mix_others", place: "hub", icon: "🎧", label: "Mix for other artists", desc: "Needs 🎧 30+ Ear. Pays well, takes a day.", energy: 30, days: 1, max: 2,
     check: (p) => (p.ear >= 30 ? null : "Needs 30 Ear (make beats)"),
     run: (p) => {
-      const pay = capEarn(p, "mixing", (30_000 + p.ear * 900) * dim(p, "mix_others", [1, 0.6]), 250_000);
+      const pay = capEarn(p, "mixing", (HUSTLE.mix + p.ear * HUSTLE.mixPerEar) * dim(p, "mix_others", [1, 0.6]), hustleCap(p, HUSTLE.mixCap));
       return { text: `Mixed a client's song: ${naira(pay)}.`, tone: "good", deltas: { cash: pay, ear: 1 } };
     },
   },
@@ -262,7 +264,7 @@ export const ACTIONS: ActionDef[] = [
   {
     id: "dj", place: "bar", icon: "🪩", label: "DJ the night", desc: "Pays more with 🧢 street cred.", energy: 30, max: 1,
     run: (p) => {
-      const pay = capEarn(p, "dj", 20_000 + p.cred * 500, 80_000);
+      const pay = capEarn(p, "dj", HUSTLE.dj + p.cred * HUSTLE.djPerCred, hustleCap(p, HUSTLE.djCap));
       return { text: `The crowd went wild. ${naira(pay)} in your pocket.`, tone: "good", deltas: { cash: pay, cred: 2, hype: 1 } };
     },
   },
@@ -506,6 +508,11 @@ export function resolveEvent(p: Player, choice: number): ActionResult {
   return { ok: true, text: out.text, tone: out.tone ?? "neutral", deltas: d, icon: ev.icon };
 }
 
+/** What the end of this week will cost before any income: food, transport, data and studio diesel. */
+export function weeklyCost(p: Player) {
+  return Math.round((LIVING_COST * effectsNow(p).prices) / 100) * 100 + (p.studio >= 2 ? 10_000 : 0);
+}
+
 // ───────── Level ─────────
 
 export interface LevelReq {
@@ -637,6 +644,14 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
       s.farmed = 0;
     } else if (s.pulled > 0) s.pulled--;
     s.promo = Math.round(s.promo * 0.6);
+  }
+
+  // radio spins: every charting song earns airplay money, more the higher it sits
+  let spins = 0;
+  for (const s of p.songs) if (s.stage === "released" && s.rank > 0) spins += (CHART_SIZE + 1 - s.rank) * SPIN_PAY;
+  if (spins > 0) {
+    earn(spins);
+    lines.push({ icon: "📻", text: `Radio spins for your charting songs: ${naira(spins)}`, tone: "good" });
   }
 
   // fans: a little growth from the best-charting song each week, a slow fade otherwise
@@ -779,10 +794,14 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
   if (reqs.length && reqs.every((r) => r.done)) {
     p.level++;
     const L = LEVELS[p.level];
-    lines.unshift({ icon: L.icon, text: `LEVEL UP! You are now a ${L.name} label. ${L.slots} artist slots.`, tone: "good" });
-    log(p, L.icon, `Became a ${L.name} label.`, "good");
+    lines.unshift({ icon: L.icon, text: `LEVEL UP! You are now ${aOrAn(L.name)} ${L.name} label. ${L.slots} artist slots.`, tone: "good" });
+    log(p, L.icon, `Became ${aOrAn(L.name)} ${L.name} label.`, "good");
     applyDeltas(p, { gold: 20 * p.level, rep: 3 });
   }
+
+  // a heads-up when next week's costs will be tight
+  const next = weeklyCost(p);
+  if (p.cash >= 0 && p.cash < next * 2) lines.push({ icon: "⚠️", text: `Heads up: next week's food, transport and data cost about ${naira(next)}. You have ${naira(p.cash)}.`, tone: "bad" });
 
   // 12. Sapa / endings (Chill mode: no folding, just a warning)
   if (p.cash < 0) {
@@ -803,6 +822,7 @@ export function endWeek(p: Player, opts: EndWeekOpts): WeekRecap {
     if (ev) {
       p.pendingEvent = ev;
       p.eventsSeen[ev] = p.week;
+      p.flags[`ev:${ev}`] = (p.flags[`ev:${ev}`] ?? 0) + 1;
     }
   }
 
@@ -830,7 +850,7 @@ function end(p: Player, kind: "win" | "fold" | "time") {
   const t = {
     win: ["👑 Continental King!", `In ${p.week - 1} weeks you turned ${p.label} into a continental powerhouse.`],
     fold: ["🫙 The label folded", "Sapa won this round. Every big label has a comeback story; start yours."],
-    time: [`⏳ Three years of ${p.label}`, `You built a ${LEVELS[p.level].name} label with ${p.stats.no1} No. 1s and ${p.stats.top10} Top 10s.`],
+    time: [`⏳ Three years of ${p.label}`, `You built ${aOrAn(LEVELS[p.level].name)} ${LEVELS[p.level].name} label with ${p.stats.no1} No. 1s and ${p.stats.top10} Top 10s.`],
   }[kind];
   p.ended = { kind, week: p.week, score: s, title: t[0], text: t[1] };
 }

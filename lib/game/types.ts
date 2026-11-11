@@ -1,5 +1,5 @@
 export type Tone = "good" | "bad" | "neutral";
-export type ProfileId = "richkid" | "producer";
+export type ProfileId = "richkid" | "dj" | "producer";
 export type Genre = "afrobeats" | "amapiano" | "streethop" | "afrorb" | "alte" | "gospel" | "drill";
 export type PlaceId = "base" | "studio" | "hub" | "bar" | "radio" | "law" | "bank" | "mamaput" | "creator" | "sanctuary";
 export type TabId = "home" | "label" | "wallet" | "phone" | "profile";

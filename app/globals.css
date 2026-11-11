@@ -242,6 +242,8 @@ button {
 .fig-idle .bodyg { animation: breathe 3.2s ease-in-out infinite; }
 
 /* Smooth mode and reduced motion: no idle animation in the world */
+/* map under a pop-up: everything holds still */
+.paused * { animation-play-state: paused !important; }
 .smooth .mover, .smooth .neon, .smooth .ripple, .smooth .bob, .smooth .fig * { animation: none !important; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }

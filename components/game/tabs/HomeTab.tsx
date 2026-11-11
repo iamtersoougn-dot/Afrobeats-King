@@ -14,8 +14,9 @@ import { billboardFor, isHouse, noteAdTap } from "@/lib/sponsors";
 import { CALENDAR } from "@/lib/game/kit.config";
 import { fmtDate, nextFestival, seasonsOn, whenText } from "@/lib/kit/calendar";
 import { calDay } from "@/lib/game/select";
+import { aOrAn } from "@/lib/game/util";
 import WorldView from "@/components/world/WorldView";
-import { useNow } from "@/components/world/useEnv";
+import { useFrameCheck, useNow } from "@/components/world/useEnv";
 import { Bar, Sheet } from "../ui";
 
 /** How many things you can do at each place right now (the green number on the map). */
@@ -29,6 +30,9 @@ export function placeCounts(p: Player): Partial<Record<PlaceId, number>> {
 
 export default function HomeTab() {
   const p = useGame((s) => s.player)!;
+  // a pop-up covers the map: pause its animations (and don't measure the frame rate then)
+  const covered = useGame((s) => !!s.place || !!s.sheet || !!s.vignette);
+  useFrameCheck(!covered);
   const here = useGame((s) => s.here);
   const meta = useGame((s) => s.meta);
   const openPlace = useGame((s) => s.openPlace);
@@ -40,6 +44,7 @@ export default function HomeTab() {
   const wave = useLive((s) => s.wave);
   const [needsOpen, setNeedsOpen] = useState(false);
   const [placesOpen, setPlacesOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   const now = useNow();
   const ev = dailyEvent(new Date(now));
@@ -51,7 +56,7 @@ export default function HomeTab() {
 
   const onPlace = (id: PlaceId) => {
     const pl = PLACES.find((x) => x.id === id)!;
-    if (p.level < pl.minLevel) return toast({ icon: "🔒", title: `${pl.name} opens when you're a ${LEVELS[pl.minLevel].name} label`, text: "See Label → Grow for what's left.", tone: "neutral" });
+    if (p.level < pl.minLevel) return toast({ icon: "🔒", title: `${pl.name} opens when you're ${aOrAn(LEVELS[pl.minLevel].name)} ${LEVELS[pl.minLevel].name} label`, text: "See Label → Grow for what's left.", tone: "neutral" });
     openPlace(id);
   };
 
@@ -66,6 +71,7 @@ export default function HomeTab() {
         here={here}
         counts={placeCounts(p)}
         onPlace={onPlace}
+        paused={covered}
         extras={{ neon: !!p.flags["studio:neon"], gold: !!p.flags["studio:gold_room"], ride: ["gwagon", "tokunbo", "keke"].find((r) => p.flags[`ride:${r}`]) }}
         others={others.map((o) => ({ pid: o.pid, name: o.name, place: o.place, look: o.look, label: o.label }))}
         onOther={(o) => wave(o.pid, "👋").then((ok) => ok && toast({ icon: "👋", title: `You waved at ${o.name}`, tone: "good" }))}
@@ -85,18 +91,31 @@ export default function HomeTab() {
 
       {/* top strip: season, today in Lagos */}
       <div className="pointer-events-none absolute left-2 right-2 top-2 flex flex-col gap-1.5">
-        <div className="pointer-events-auto flex items-center gap-2 self-start rounded-2xl bg-night-2/90 px-3 py-1.5 text-[12.5px] shadow-lg backdrop-blur" data-tour="today">
-          <span className="text-lg">{ev.emoji}</span>
-          <span className="min-w-0">
-            <span className="block font-bold leading-tight">Today in Lagos: {ev.title}</span>
-            <span className="block leading-tight text-lilac">{ev.label}</span>
-          </span>
-        </div>
-        <div className="pointer-events-auto self-start rounded-xl bg-night-2/80 px-2.5 py-1 text-[11.5px] text-lilac backdrop-blur">
-          {fmtDate(d)} · {seasons.map((s) => `${s.emoji} ${s.name}`).join(", ") || "📅 Normal week"}
-          {fest && ` · ${fest.f.emoji} ${fest.f.name} ${whenText(fest.inDays)}`}
-          {` · 📱 ${p.trend.tag}`}
-        </div>
+        {/* one slim line; tap to see today's event, the season and the trend in full */}
+        <button
+          className="pointer-events-auto flex min-h-[40px] max-w-full items-center gap-1.5 self-start rounded-2xl bg-night-2/90 px-3 py-1.5 text-left text-[12.5px] shadow-lg backdrop-blur"
+          data-tour="today"
+          onClick={() => setInfoOpen(!infoOpen)}
+          aria-expanded={infoOpen}
+          aria-label={`Today in Lagos: ${ev.title}`}
+        >
+          <span className="text-base">{ev.emoji}</span>
+          {infoOpen ? (
+            <span className="min-w-0">
+              <span className="block font-bold leading-tight">Today in Lagos: {ev.title}</span>
+              <span className="block leading-tight text-lilac">{ev.label}</span>
+              <span className="mt-1 block leading-tight text-lilac">
+                {fmtDate(d)} · {seasons.map((x) => `${x.emoji} ${x.name}`).join(", ") || "📅 Normal week"}
+                {fest && ` · ${fest.f.emoji} ${fest.f.name} ${whenText(fest.inDays)}`}
+              </span>
+              <span className="mt-1 block leading-tight text-lilac">📱 Trending: {p.trend.tag}</span>
+            </span>
+          ) : (
+            <span className="min-w-0 truncate font-semibold">
+              {ev.label} · {seasons[0]?.emoji ?? "📅"} {fmtDate(d)} ▾
+            </span>
+          )}
+        </button>
         {pending && (
           <button className="pointer-events-auto flex items-center gap-2 self-stretch rounded-2xl border-2 border-stage bg-night-2 px-3 py-2 text-left" onClick={() => openSheet("event")}>
             <span className="text-2xl">{pending.icon}</span>
@@ -131,7 +150,7 @@ export default function HomeTab() {
         <button className="btn btn-ghost h-12 w-12 shrink-0 flex-col gap-0 p-0 text-[18px] leading-none" onClick={() => setPlacesOpen(true)} aria-label="Places">
           🧭<span className="text-[9.5px] font-bold">Places</span>
         </button>
-        <button data-tour="end-turn" className={`btn h-12 min-w-0 flex-1 whitespace-nowrap text-[15px] ${tired ? "btn-danfo pulse-ring" : "btn-danfo"}`} onClick={endTurn}>
+        <button data-tour="end-turn" className={`btn h-12 min-w-0 flex-1 whitespace-nowrap text-[15px] ${tired ? "btn-danfo pulse-ring" : "btn-danfo"}`} onClick={() => endTurn()}>
           🌙 End week
         </button>
       </div>

@@ -4,17 +4,18 @@ import { useState } from "react";
 import { useGame, type Sheet as SheetId } from "@/lib/store";
 import { pickEvent } from "@/lib/game/events";
 import { LEVELS } from "@/lib/game/data";
+import type { PlaceId } from "@/lib/game/types";
 import { CHILL_NORMAL, CHILL_NOUNS } from "@/lib/game/kit.config";
 import { softDelta } from "@/lib/kit/chill";
 import { chillOn } from "@/lib/game/select";
-import { naira } from "@/lib/game/util";
+import { aOrAn, naira } from "@/lib/game/util";
 import { SHOP, type ItemSlot } from "@/lib/products";
 import Figure, { toFigLook } from "@/components/world/Figure";
 import { useSmooth } from "@/components/world/useEnv";
 import { Section, Sheet, toneText } from "./ui";
 import AdSheet from "./AdSheet";
 
-export const GAME_VERSION = "0.3.0";
+export const GAME_VERSION = "0.4.0";
 
 export default function Sheets({ which }: { which: Exclude<SheetId, null> }) {
   const close = useGame((s) => s.openSheet);
@@ -36,6 +37,10 @@ export default function Sheets({ which }: { which: Exclude<SheetId, null> }) {
       return <AdSheet onClose={onClose} />;
     case "newgame":
       return <NewGameSheet onClose={onClose} />;
+    case "endcheck":
+      return <EndCheckSheet onClose={onClose} />;
+    case "level":
+      return <LevelSheet onClose={onClose} />;
     default:
       return null;
   }
@@ -44,6 +49,7 @@ export default function Sheets({ which }: { which: Exclude<SheetId, null> }) {
 function HelpSheet({ onClose }: { onClose: () => void }) {
   const replay = useGame((s) => s.replayTour);
   const open = useGame((s) => s.openSheet);
+  const openLevel = useGame((s) => s.openLevelCard);
   const p = useGame((s) => s.player);
   return (
     <Sheet title="How to play" icon="❓" onClose={onClose}>
@@ -75,6 +81,11 @@ function HelpSheet({ onClose }: { onClose: () => void }) {
           <h3 className="font-display text-[15px] font-bold text-danfo">Bills with deadlines</h3>
           <p className="text-paper/90">Advance balances (Law office), studio rent (Surulere Sound), loans (Bank) and show balances (The Sanctuary). Late means angry artists, fees or lost deposits.</p>
         </div>
+        {p && p.level >= 1 && p.level < 4 && (
+          <button className="btn btn-ghost w-full" onClick={() => openLevel(p.level)}>
+            {LEVELS[p.level].icon} What&apos;s new at {LEVELS[p.level].name} level
+          </button>
+        )}
         {p && chillOn(p) && <p className="rounded-2xl bg-lagoon/15 px-3 py-2 text-lagoon">🌿 Chill mode is on: no game-over, no late fees, fewer setbacks.</p>}
         <div className="flex gap-2">
           <button
@@ -97,11 +108,11 @@ function HelpSheet({ onClose }: { onClose: () => void }) {
 
 function RecapSheet({ onClose }: { onClose: () => void }) {
   const p = useGame((s) => s.player)!;
-  const open = useGame((s) => s.openSheet);
   const quit = useGame((s) => s.quitGame);
+  const afterRecap = useGame((s) => s.afterRecap);
   const r = p.recap;
   const chill = chillOn(p);
-  const next = () => (p.pendingEvent ? open("event") : onClose());
+  const next = () => afterRecap();
   if (p.ended)
     return (
       <Sheet title={p.ended.title} onClose={onClose}>
@@ -382,6 +393,86 @@ function NewGameSheet({ onClose }: { onClose: () => void }) {
         <button className="btn btn-stage" onClick={quit}>
           Start new
         </button>
+      </div>
+    </Sheet>
+  );
+}
+
+function EndCheckSheet({ onClose }: { onClose: () => void }) {
+  const p = useGame((s) => s.player)!;
+  const endTurn = useGame((s) => s.endTurn);
+  return (
+    <Sheet title="End the week already?" icon="🌙" onClose={onClose}>
+      <p className="text-[14.5px]">
+        You haven&apos;t done anything this week and you still have ⚡ {Math.round(p.energy)} energy and {p.days} work day{p.days === 1 ? "" : "s"}. The yellow board shows a good next step.
+      </p>
+      <div className="grid grid-cols-2 gap-2 py-4">
+        <button className="btn btn-danfo" onClick={onClose} autoFocus>
+          Not yet
+        </button>
+        <button
+          className="btn btn-ghost"
+          onClick={() => {
+            onClose();
+            endTurn(true);
+          }}
+        >
+          End it anyway
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
+/** What changes at each label level, and the first thing to do there. */
+const LEVEL_CARDS: Record<number, { lines: string[]; step: string; place: PlaceId }> = {
+  1: {
+    lines: ["2 artist slots: sign a second act at the Open-mic bar.", "The creator house in Lekki: ClipTok challenges and music videos (+20% streams).", "The Sanctuary in Ikeja: book shows for an artist with ⭐ 25+ fans."],
+    step: "Sign a second artist",
+    place: "bar",
+  },
+  2: {
+    lines: ["4 artist slots, and better acts at the open-mic.", "Shows pay more as your artists grow: aim to sell out The Sanctuary.", "Next goal: two No. 1 songs and ₦45m to go Major."],
+    step: "Book a show at The Sanctuary",
+    place: "sanctuary",
+  },
+  3: {
+    lines: ["6 artist slots and the strongest open-mic acts.", "Bigger shows, bigger brand deals, bigger egos. Keep your artists happy.", "Final goal: four No. 1s, four artists and ₦150m to go Continental."],
+    step: "Find your next star",
+    place: "bar",
+  },
+};
+
+function LevelSheet({ onClose }: { onClose: () => void }) {
+  const lv = useGame((s) => s.levelCard);
+  const openPlace = useGame((s) => s.openPlace);
+  const setTab = useGame((s) => s.setTab);
+  const afterRecap = useGame((s) => s.afterRecap);
+  const L = LEVELS[lv];
+  const card = LEVEL_CARDS[lv];
+  if (!card) return null;
+  return (
+    <Sheet title={`You're ${aOrAn(L.name)} ${L.name} label`} icon={L.icon} onClose={onClose}>
+      <ul className="grid gap-2 pb-2 text-[14.5px]">
+        {card.lines.map((l) => (
+          <li key={l} className="rounded-2xl bg-night-3 px-3 py-2">
+            {l}
+          </li>
+        ))}
+      </ul>
+      <div className="grid gap-2 pb-4 pt-2">
+        <button
+          className="btn btn-danfo"
+          onClick={() => {
+            onClose();
+            setTab("home");
+            openPlace(card.place);
+            afterRecap();
+          }}
+        >
+          First step: {card.step}
+        </button>
+        <p className="text-center text-[12.5px] text-lilac">You can open this again from the ? button.</p>
       </div>
     </Sheet>
   );

@@ -4,7 +4,7 @@
  * The Lagos map: Home opens straight into it. Drag to move, pinch or use the buttons to zoom.
  * Tapping a place flies the camera there and opens its sheet. Smooth mode drops the moving people and traffic.
  */
-import { useEffect, useMemo } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { LEVELS, PLACES, type Place } from "@/lib/game/data";
 import type { PlaceId, Player } from "@/lib/game/types";
 import { billboardFor, noteAdView } from "@/lib/sponsors";
@@ -67,7 +67,7 @@ export interface Other {
   label?: string | null;
 }
 
-export default function WorldView({ p, counts, onPlace, onLandmark, here, others = [], onOther, extras }: {
+export default function WorldView({ p, counts, onPlace, onLandmark, here, others = [], onOther, extras, paused = false }: {
   p: Player;
   counts: Partial<Record<PlaceId, number>>;
   onPlace: (id: PlaceId) => void;
@@ -76,6 +76,8 @@ export default function WorldView({ p, counts, onPlace, onLandmark, here, others
   others?: Other[];
   onOther?: (o: Other) => void;
   extras?: { neon?: boolean; gold?: boolean; ride?: string };
+  /** a pop-up covers the map: stop its animations to save battery */
+  paused?: boolean;
 }) {
   const hour = useLagosHour();
   const night = isNight(hour);
@@ -90,9 +92,31 @@ export default function WorldView({ p, counts, onPlace, onLandmark, here, others
       return { k, x: size.w / 2 - hereXY.x * k, y: size.h * 0.55 - hereXY.y * k };
     },
   });
+  const { flyTo, view, ready } = cam;
+
+  // latest values for the city's tap handlers, so the city itself only redraws when what it shows changes
+  const latest = useRef({ onPlace, onLandmark, onOther, flyTo, k: view.k, level: p.level, dragged: cam.dragged });
+  useLayoutEffect(() => {
+    latest.current = { onPlace, onLandmark, onOther, flyTo, k: view.k, level: p.level, dragged: cam.dragged };
+  });
+  const tapPlace = useCallback((id: PlaceId) => {
+    const L = latest.current;
+    if (L.dragged()) return;
+    const pl = PLACES.find((x) => x.id === id)!;
+    const { x, y } = placeXY(pl);
+    if (L.level >= pl.minLevel) L.flyTo(x, y - HEIGHT[id] * 0.2, Math.max(L.k, 0.7));
+    L.onPlace(id);
+  }, []);
+  const tapLandmark = useCallback((id: "bridge" | "billboard", slot?: string) => {
+    if (latest.current.dragged()) return;
+    latest.current.onLandmark(id, slot);
+  }, []);
+  const tapOther = useCallback((o: Other) => {
+    if (latest.current.dragged()) return;
+    latest.current.onOther?.(o);
+  }, []);
 
   // the tutorial asks the map to bring its target place into view
-  const { flyTo, view, ready } = cam;
   useEffect(() => {
     const go = (e: Event) => {
       const sel = String((e as CustomEvent).detail ?? "");
@@ -100,30 +124,92 @@ export default function WorldView({ p, counts, onPlace, onLandmark, here, others
       const pl = m && PLACES.find((x) => x.id === m[1]);
       if (pl) {
         const { x, y } = placeXY(pl);
-        flyTo(x, y - HEIGHT[pl.id] / 2, Math.max(view.k, 0.6));
+        latest.current.flyTo(x, y - HEIGHT[pl.id] / 2, Math.max(latest.current.k, 0.6));
       }
     };
     window.addEventListener("abk-tour-target", go);
     return () => window.removeEventListener("abk-tour-target", go);
-  }, [flyTo, view.k]);
+  }, []);
 
-  const bridgePts = useMemo(() => along(BRIDGE, 24), []);
-  const ground = night ? "#1f1838" : "#c9b48c";
-  const island = night ? "#24193f" : "#d7c49c";
-  const road = night ? "#120c26" : "#5b5566";
-  const water = night ? "#0d2547" : "#3d8fc7";
-  const sorted = [...PLACES].sort((a, b) => a.y - b.y);
-
-  const tap = (fn: () => void) => (e: React.MouseEvent) => {
-    if (cam.dragged()) return;
-    e.stopPropagation();
-    fn();
-  };
+  // stop the moving danfos and walkers while a pop-up covers the map
+  const svgRef = useRef<SVGSVGElement>(null);
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !paused) return;
+    svg.pauseAnimations();
+    return () => svg.unpauseAnimations();
+  }, [paused]);
 
   return (
-    <div ref={box} className={`relative h-full w-full touch-none select-none overflow-hidden ${smooth ? "smooth" : ""}`} style={{ background: night ? "#0d2547" : "#3d8fc7" }} {...cam.handlers} aria-label="Map of Lagos">
-      <div className={`world-cam absolute left-0 top-0 origin-top-left ${cam.animate ? "anim" : ""}`} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k || 0.0001})`, width: WORLD_W, height: WORLD_H, opacity: ready ? 1 : 0 }}>
-        <svg width={WORLD_W} height={WORLD_H} viewBox={`0 0 ${WORLD_W} ${WORLD_H}`} className="block">
+    <div ref={box} className={`relative h-full w-full touch-none select-none overflow-hidden ${smooth ? "smooth" : ""} ${paused ? "paused" : ""}`} style={{ background: night ? "#0d2547" : "#3d8fc7" }} {...cam.handlers} aria-label="Map of Lagos">
+      {/* before the first measure the city is hidden at full size (a near-zero scale makes Chrome lay its text out at zero width, and the drawn-once city would keep that) */}
+      <div className={`world-cam absolute left-0 top-0 origin-top-left ${cam.animate ? "anim" : ""}`} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k || 1})`, width: WORLD_W, height: WORLD_H, opacity: ready ? 1 : 0 }}>
+        <City
+          svgRef={svgRef}
+          night={night}
+          dusk={dusk}
+          smooth={smooth}
+          level={p.level}
+          counts={counts}
+          others={others}
+          here={here}
+          look={p.look}
+          extras={extras}
+          onPlace={tapPlace}
+          onLandmark={tapLandmark}
+          onOther={tapOther}
+        />
+      </div>
+
+      {/* zoom controls */}
+      <div className="absolute bottom-3 right-3 flex flex-col gap-2">
+        <button className="btn btn-ghost h-11 w-11 p-0 text-xl" onClick={cam.zoomIn} aria-label="Zoom in">
+          +
+        </button>
+        <button className="btn btn-ghost h-11 w-11 p-0 text-xl" onClick={cam.zoomOut} aria-label="Zoom out">
+          −
+        </button>
+        <button className="btn btn-ghost h-11 w-11 p-0 text-base" onClick={() => flyTo(hereXY.x, hereXY.y, Math.max(view.k, 0.6))} aria-label="Find me">
+          📍
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface CityProps {
+  svgRef: React.RefObject<SVGSVGElement | null>;
+  night: boolean;
+  dusk: boolean;
+  smooth: boolean;
+  level: number;
+  counts: Partial<Record<PlaceId, number>>;
+  others: Other[];
+  here: PlaceId;
+  look: Player["look"];
+  extras?: { neon?: boolean; gold?: boolean; ride?: string };
+  onPlace: (id: PlaceId) => void;
+  onLandmark: (id: "bridge" | "billboard", slot?: string) => void;
+  onOther: (o: Other) => void;
+}
+
+const same = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
+/** The city only redraws when something it shows changes (not when you pan, zoom or tap elsewhere). */
+const City = memo(
+  function City({ svgRef, night, dusk, smooth, level, counts, others, here, look, extras, onPlace, onLandmark, onOther }: CityProps) {
+    const bridgePts = useMemo(() => along(BRIDGE, 24), []);
+    const ground = night ? "#1f1838" : "#c9b48c";
+    const island = night ? "#24193f" : "#d7c49c";
+    const road = night ? "#120c26" : "#5b5566";
+    const water = night ? "#0d2547" : "#3d8fc7";
+    const hereXY = placeXY(PLACES.find((x) => x.id === here) ?? PLACES[0]);
+    const sorted = [...PLACES].sort((a, b) => a.y - b.y);
+    const tap = (fn: () => void) => (e: React.MouseEvent) => {
+      e.stopPropagation();
+      fn();
+    };
+    return (
+        <svg ref={svgRef} width={WORLD_W} height={WORLD_H} viewBox={`0 0 ${WORLD_W} ${WORLD_H}`} className="block">
           {/* land, lagoon, sea */}
           <rect width={WORLD_W} height={WORLD_H} fill={ground} />
           <path d="M 520 945 L 1000 940 L 1000 1330 L 520 1330 Z" fill={island} />
@@ -185,12 +271,8 @@ export default function WorldView({ p, counts, onPlace, onLandmark, here, others
                   pl={it.pl}
                   night={night}
                   count={counts[it.pl.id] ?? 0}
-                  locked={p.level < it.pl.minLevel}
-                  onTap={tap(() => {
-                    const { x, y } = placeXY(it.pl);
-                    if (p.level >= it.pl.minLevel) flyTo(x, y - HEIGHT[it.pl.id] * 0.2, Math.max(view.k, 0.7));
-                    onPlace(it.pl.id);
-                  })}
+                  locked={level < it.pl.minLevel}
+                  onTap={tap(() => onPlace(it.pl.id))}
                   extras={it.pl.id === "base" ? extras : undefined}
                 />
               ),
@@ -223,7 +305,7 @@ export default function WorldView({ p, counts, onPlace, onLandmark, here, others
             const { x, y } = placeXY(pl);
             const ox = x - 70 + ((i * 47) % 140);
             return (
-              <g key={o.pid} onClick={tap(() => onOther?.(o))} style={{ cursor: "pointer" }}>
+              <g key={o.pid} onClick={tap(() => onOther(o))} style={{ cursor: "pointer" }}>
                 <Figure look={toFigLook(o.look ?? { skin: "#7d4f30", hue: 200, hair: 1 })} pose="idle" x={ox} y={y + 30} s={0.5} />
                 <rect x={ox - 34} y={y + 34} width="68" height="18" rx="9" fill="#37d3c4" />
                 <text x={ox} y={y + 47} textAnchor="middle" fontSize="11" fontWeight="800" fill="#06221f">
@@ -235,7 +317,7 @@ export default function WorldView({ p, counts, onPlace, onLandmark, here, others
           {/* you */}
           <g style={{ transform: `translate(${hereXY.x + 52}px, ${hereXY.y + 26}px)`, transition: "transform 1.2s ease-in-out" }}>
             <g key={here} className="once">
-              <Figure look={toFigLook(p.look)} pose="walk" s={0.62} />
+              <Figure look={toFigLook(look)} pose="walk" s={0.62} />
             </g>
             <rect x="-22" y="4" width="44" height="17" rx="8.5" fill="#ffc93c" />
             <text x="0" y="16.5" textAnchor="middle" fontSize="11" fontWeight="900" fill="#241a05">
@@ -245,23 +327,19 @@ export default function WorldView({ p, counts, onPlace, onLandmark, here, others
           {/* dusk / night wash */}
           {(night || dusk) && <rect width={WORLD_W} height={WORLD_H} fill={dusk ? "#ff7a45" : "#0b0630"} opacity={dusk ? 0.12 : 0.18} pointerEvents="none" />}
         </svg>
-      </div>
-
-      {/* zoom controls */}
-      <div className="absolute bottom-3 right-3 flex flex-col gap-2">
-        <button className="btn btn-ghost h-11 w-11 p-0 text-xl" onClick={cam.zoomIn} aria-label="Zoom in">
-          +
-        </button>
-        <button className="btn btn-ghost h-11 w-11 p-0 text-xl" onClick={cam.zoomOut} aria-label="Zoom out">
-          −
-        </button>
-        <button className="btn btn-ghost h-11 w-11 p-0 text-base" onClick={() => flyTo(hereXY.x, hereXY.y, Math.max(view.k, 0.6))} aria-label="Find me">
-          📍
-        </button>
-      </div>
-    </div>
-  );
-}
+    );
+  },
+  (a, b) =>
+    a.night === b.night &&
+    a.dusk === b.dusk &&
+    a.smooth === b.smooth &&
+    a.level === b.level &&
+    a.here === b.here &&
+    same(a.counts, b.counts) &&
+    same(a.others, b.others) &&
+    same(a.look, b.look) &&
+    same(a.extras, b.extras),
+);
 
 function PlaceNode({ pl, night, count, locked, onTap, extras }: { pl: Place; night: boolean; count: number; locked: boolean; onTap: (e: React.MouseEvent) => void; extras?: { neon?: boolean; gold?: boolean; ride?: string } }) {
   const { x, y } = placeXY(pl);

@@ -11,6 +11,7 @@ import { DEFAULT_LOOK, SAVE_VERSION, actionById, clone, createPlayer, doAction, 
 import { canQuick, toggleRoutine } from "./kit/routines";
 import { NO_ROUTINE, ROUTINES, START_DAY, DAYS_PER_TURN } from "./game/kit.config";
 import { ACHIEVEMENTS, questsFor } from "./game/meta";
+import { currentGoal } from "./game/goals";
 import type { ActionResult, Deltas, Genre, PlaceId, Player, TabId, Tone } from "./game/types";
 import { applyDeltas, deltaChips } from "./game/util";
 import { SEASON_PTS, SEASON_WEEK_CAP, dailyEvent, eventMatches, lagosDay, seasonWeek } from "./daily";
@@ -41,7 +42,7 @@ export interface Vignette {
   chips: { text: string; tone: Tone }[];
   extra?: string; // daily bonus line
 }
-export type Sheet = null | "help" | "report" | "recap" | "event" | "settings" | "wardrobe" | "ad" | "level" | "newgame";
+export type Sheet = null | "help" | "report" | "recap" | "event" | "settings" | "wardrobe" | "ad" | "level" | "newgame" | "endcheck";
 
 export interface Meta {
   installId: string;
@@ -73,6 +74,10 @@ export interface Meta {
   email: string;
   errors: string[];
   submitted: string[]; // run ids sent to the leaderboard
+  levelSeen: number; // highest label level whose welcome card was shown
+  askedWeek: number; // week we last asked "end an empty week?"
+  autoSmooth: boolean; // Smooth mode switched on by the frame-rate check
+  smoothNoticed: boolean; // the "Smooth mode is on" notice was shown
 }
 
 const freshMeta = (): Meta => ({
@@ -105,6 +110,10 @@ const freshMeta = (): Meta => ({
   email: "",
   errors: [],
   submitted: [],
+  levelSeen: 0,
+  askedWeek: 0,
+  autoSmooth: false,
+  smoothNoticed: false,
 });
 
 interface State {
@@ -145,7 +154,12 @@ interface State {
   drop: (id: string) => ActionResult;
   pay: (id: string) => ActionResult;
   choose: (i: number) => void;
-  endTurn: () => void;
+  endTurn: (force?: boolean) => void;
+  /** after the recap or an event: show the next thing waiting (event, then the new level's welcome card) */
+  afterRecap: () => void;
+  openLevelCard: (level?: number) => void;
+  /** which level the welcome card shows (not saved) */
+  levelCard: number;
   toggleRoutine: (id: string) => void;
   // meta
   claimDaily: () => void;
@@ -157,6 +171,8 @@ interface State {
   adReward: () => void;
   setSetting: (k: "smooth" | "sound" | "livePresence", v: boolean | null) => void;
   setChill: (v: boolean) => void;
+  /** Smooth mode switched itself on (slow phone or low frame rate): turn it on and say so once */
+  autoSmooth: (why: "phone" | "fps") => void;
   setLook: (l: Partial<Player["look"]>) => void;
   // money
   buy: (productId: string, email: string) => Promise<{ ok: boolean; message?: string; redirect?: string }>;
@@ -268,7 +284,7 @@ export const useGame = create<State>()(
 
         setTab: (t) => set({ tab: t, place: null }),
         setSeg: (key, v) => set((s) => ({ seg: { ...s.seg, [key]: v } })),
-        openPlace: (pl) => set((s) => ({ place: pl, here: pl ?? s.here })),
+        openPlace: (pl) => set((s) => ({ place: pl, here: pl ?? s.here, vignette: null })),
         openSheet: (s) => set({ sheet: s }),
         closeVignette: () => set({ vignette: null }),
         toast: (t) => {
@@ -284,7 +300,29 @@ export const useGame = create<State>()(
           set((s) => ({ tour: null, meta: { ...s.meta, tutorialDone: true } }));
           analytics("tutorial_done", { skipped });
         },
-        replayTour: () => set({ tour: 0, tab: "home", place: null, sheet: null }),
+        replayTour: () => {
+          // never start the tutorial over a decision that's waiting
+          if (get().player?.pendingEvent) {
+            set({ sheet: "event", place: null });
+            get().toast({ icon: "❗", title: "Decide this first, then replay the tutorial", tone: "neutral" });
+            return;
+          }
+          set({ tour: 0, tab: "home", place: null, sheet: null, vignette: null });
+        },
+        levelCard: 1,
+        openLevelCard: (level) => {
+          const p = get().player;
+          if (!p) return;
+          const lv = Math.max(1, Math.min(3, level ?? p.level));
+          set((s) => ({ sheet: "level", levelCard: lv, meta: { ...s.meta, levelSeen: Math.max(s.meta.levelSeen, p.level) } }));
+        },
+        afterRecap: () => {
+          const p = get().player;
+          if (!p) return set({ sheet: null });
+          if (p.pendingEvent) return set({ sheet: "event" });
+          if (p.level > get().meta.levelSeen && p.level < 4 && !p.ended) return get().openLevelCard(p.level);
+          set({ sheet: null });
+        },
 
         newGame: (o) => {
           const m = { ...get().meta };
@@ -326,9 +364,9 @@ export const useGame = create<State>()(
           } else sfx.tap();
           const p = get().player!;
           const skip = quick && canQuick({ uses: p.uses ?? {}, routines: p.routines ?? [] }, id, ROUTINES);
-          // the tutorial needs the screen clear, so it shows the result line without the scene
+          // the result shows inside the action's card in the place sheet; Quick do skips the scene and just toasts
           set({ vignette: skip ? null : { id: uid++, actionId: id, place: a.place, text: res.text, tone: res.tone, chips, extra } });
-          if (skip || get().tour !== null) get().toast({ icon: a.icon, title: res.text, tone: res.tone });
+          if (skip) get().toast({ icon: a.icon, title: res.text, tone: res.tone });
           return res;
         },
 
@@ -371,13 +409,21 @@ export const useGame = create<State>()(
           if (!res.ok) return;
           showChips(res.deltas);
           set((s) => ({ sheet: null, meta: { ...s.meta, pass: addXp(s.meta, XP.event) } }));
+          get().afterRecap();
           get().toast({ icon: res.icon ?? "✅", title: res.text, tone: res.tone });
         },
 
-        endTurn: () => {
+        endTurn: (force = false) => {
           const before = get().player;
           if (!before || before.ended) return;
           const touring = get().tour !== null;
+          // ask once if the player would waste a week (nothing done, lots of energy left); never in the tutorial
+          const did = Object.values(before.used).reduce((t, n) => t + n, 0);
+          // (not when the yellow board itself says to end the week)
+          if (!force && !touring && did === 0 && before.energy >= 60 && get().meta.askedWeek !== before.week && currentGoal(before).open !== "endweek") {
+            set((s) => ({ sheet: "endcheck", place: null, meta: { ...s.meta, askedWeek: before.week } }));
+            return;
+          }
           let lvlUp = false;
           let firstNo1 = false;
           let sold = 0;
@@ -513,6 +559,12 @@ export const useGame = create<State>()(
           showChips({ gold: AD_GOLD });
         },
 
+        autoSmooth: (why) => {
+          const m = get().meta;
+          if (m.smooth !== null || m.smoothNoticed) return;
+          set((s) => ({ meta: { ...s.meta, autoSmooth: why === "fps" ? true : s.meta.autoSmooth, smoothNoticed: true } }));
+          get().toast({ icon: "🐢", title: "Smooth mode is on", text: "Fewer moving things so your phone stays fast. Change it in Profile → Settings.", tone: "neutral" });
+        },
         setSetting: (k, v) => {
           set((s) => ({ meta: { ...s.meta, [k]: v } }));
           if (k === "sound") setSoundEnabled(!!v);
@@ -631,11 +683,15 @@ export const useGame = create<State>()(
       migrate: (persisted, version) => {
         const s = (persisted ?? {}) as { player?: Player | null; meta?: Partial<Meta> };
         if (version < SAVE_VERSION && s.player) s.player = migratePlayer(s.player);
-        return { player: s.player ?? null, meta: { ...freshMeta(), ...(s.meta ?? {}) } } as unknown as State;
+        // meta defaults are filled in by merge below, so it can still tell which fields an old save lacked
+        return { player: s.player ?? null, meta: s.meta ?? {} } as unknown as State;
       },
       merge: (persisted, current) => {
         const s = (persisted ?? {}) as { player?: Player | null; meta?: Partial<Meta> };
-        return { ...current, player: s.player ? migratePlayer(s.player) : null, meta: { ...freshMeta(), ...(s.meta ?? {}) } };
+        const meta = { ...freshMeta(), ...(s.meta ?? {}) };
+        // older saves: don't greet a player with welcome cards for levels they reached before the cards existed
+        if (s.meta && s.meta.levelSeen === undefined) meta.levelSeen = s.player?.level ?? 0;
+        return { ...current, player: s.player ? migratePlayer(s.player) : null, meta };
       },
       // localStorage loads synchronously, before `useGame` exists, so flag "ready" on the next tick
       onRehydrateStorage: () => () => {

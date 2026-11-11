@@ -93,7 +93,7 @@ const median = (xs: number[]) => (xs.length ? [...xs].sort((a, b) => a - b)[Math
 const fmt = (n: number) => (Number.isNaN(n) ? "—" : n >= 1e6 ? `₦${(n / 1e6).toFixed(1)}m` : `₦${Math.round(n / 1000)}k`);
 
 console.log(`Afrobeats King balance bot: ${RUNS} runs per profile and strategy\n`);
-for (const profile of ["richkid", "producer"] as ProfileId[]) {
+for (const profile of ["richkid", "dj", "producer"] as ProfileId[]) {
   for (const s of ["grinder", "risky", "chill", "idle"] as Strategy[]) {
     const res = Array.from({ length: RUNS }, (_, i) => run(profile, s, i));
     const ends = { win: 0, fold: 0, time: 0 };

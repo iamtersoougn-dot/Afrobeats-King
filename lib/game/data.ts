@@ -78,6 +78,20 @@ export const PROFILES: Profile[] = [
     difficulty: "Easier start",
   },
   {
+    id: "dj",
+    name: "Club DJ with savings",
+    icon: "🎧",
+    tagline: "Five years on the decks in Surulere. Now you want your own artists.",
+    cash: 600_000,
+    ear: 30,
+    cred: 45,
+    hype: 10,
+    rep: 10,
+    studio: 0,
+    perks: ["₦600k saved up", "Strong street cred: DJ gigs pay well", "Crowds know you: +10 hype to start", "No studio yet: record on a laptop or rent sessions"],
+    difficulty: "Middle start",
+  },
+  {
     id: "producer",
     name: "Hungry producer with a laptop",
     icon: "💻",
@@ -110,8 +124,8 @@ export const LEVELS: LabelLevel[] = [
   { name: "Bedroom", icon: "🛏️", slots: 1, netWorth: 0, needRank: 0, needArtists: 0, needNo1s: 0, text: "Where it starts." },
   { name: "Studio", icon: "🎚️", slots: 2, netWorth: 1_000_000, needRank: 50, needArtists: 1, needNo1s: 0, text: "A song in the Top 50 and ₦1m net worth." },
   { name: "Indie", icon: "💿", slots: 4, netWorth: 3_000_000, needRank: 10, needArtists: 2, needNo1s: 0, text: "Two artists, a Top 10 song and ₦3m." },
-  { name: "Major", icon: "🏆", slots: 6, netWorth: 30_000_000, needRank: 1, needArtists: 3, needNo1s: 2, text: "Two No. 1 songs, three artists and ₦30m." },
-  { name: "Continental", icon: "🌍", slots: 8, netWorth: 100_000_000, needRank: 1, needArtists: 4, needNo1s: 4, text: "Four No. 1s, four artists and ₦100m." },
+  { name: "Major", icon: "🏆", slots: 6, netWorth: 45_000_000, needRank: 1, needArtists: 3, needNo1s: 2, text: "Two No. 1 songs, three artists and ₦45m." },
+  { name: "Continental", icon: "🌍", slots: 8, netWorth: 150_000_000, needRank: 1, needArtists: 4, needNo1s: 4, text: "Four No. 1s, four artists and ₦150m." },
 ];
 
 export const STUDIO_LEASE = { deposit: 150_000, rent: 100_000, every: 4 };
@@ -120,4 +134,8 @@ export const SHOW = { deposit: 400_000, balance: 800_000, weeksAhead: 3, capacit
 export const VIDEO = { cost: 250_000 };
 /** Rich kid only: Daddy's weekly allowance, for the first few weeks. */
 export const ALLOWANCE = { amount: 120_000, weeks: 8 };
+/** Side hustles (Yaba Hub, the bar): pay per job and weekly limits at Bedroom level. */
+export const HUSTLE = { beat: 8_000, beatPerEar: 350, beatCap: 70_000, mix: 15_000, mixPerEar: 450, mixCap: 90_000, dj: 12_000, djPerCred: 300, djCap: 40_000 };
+/** Radio airplay money per chart place each week (No. 1 earns 50 × this, No. 50 earns 1 ×). */
+export const SPIN_PAY = 500;
 export const LOAN = { amount: 250_000, weekly: 25_000, weeks: 12 };

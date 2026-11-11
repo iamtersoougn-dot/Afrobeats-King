@@ -3,7 +3,7 @@
  * Every goal must be doable right now: if the player can't pay, the goal sends them to earn first.
  */
 import { LEVELS } from "./data";
-import { ACTIONS, actionLock, dueText, levelReqs } from "./engine";
+import { ACTIONS, actionLock, dueText, levelReqs, weeklyCost } from "./engine";
 import { pickEvent } from "./events";
 import { latestRelease, songInProgress } from "./select";
 import type { Obligation, PlaceId, Player, TabId } from "./types";
@@ -61,6 +61,10 @@ export function currentGoal(p: Player): Goal {
   if (overdue) return billGoal(p, overdue);
   const thisWeek = money.find((o) => o.dueWeek <= p.week);
   if (thisWeek) return billGoal(p, thisWeek);
+
+  // 3b. warn before going broke: this week's living costs come out when the week ends
+  const cost = weeklyCost(p);
+  if (p.cash < cost) return earnGoal(p, cost, "this week's food and transport", "This week");
 
   // 4. tired
   if (p.energy < 10) return { icon: "🌙", text: "You're out of energy. End the week to rest and get paid", chip: "Now", open: "endweek", tab: "home" };

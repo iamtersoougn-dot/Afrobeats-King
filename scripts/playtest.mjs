@@ -43,22 +43,27 @@ async function checkScreen(name) {
 
 await p.goto(BASE);
 await p.getByRole("button", { name: "Start your label" }).click();
+await p.waitForTimeout(500);
 await shot("creation-1");
+await checkScreen("creation step 1");
 await p.getByLabel("Your name").fill("Amaka");
 await p.getByRole("button", { name: "Next", exact: true }).click();
 if (PROFILE === "richkid") await p.getByRole("button", { name: /Rich kid/ }).click();
 await shot("creation-2");
-await checkScreen("creation");
+await checkScreen("creation step 2");
 await p.getByRole("button", { name: /Start/ }).last().click();
 await p.waitForTimeout(1200);
 
 // walk the tour by tapping exactly what it asks
 const card = () => p.locator('[aria-label^="Tutorial:"]');
 let steps = 0;
+const counters = [];
 for (let i = 0; i < 24; i++) {
   if (!(await card().count())) break;
   const label = await card().getAttribute("aria-label");
   await p.waitForTimeout(700);
+  const ctr = /Step (\d+) of (\d+)/.exec(await card().innerText());
+  if (ctr) counters.push([+ctr[1], +ctr[2]]);
   await shot("tour-" + label.replace("Tutorial: ", "").replace(/[^\w]+/g, "_").slice(0, 28));
   const next = card().getByRole("button", { name: /^(Start|Next|Let's go!)$/ });
   if (await next.count()) {
@@ -77,6 +82,11 @@ for (let i = 0; i < 24; i++) {
   await p.waitForTimeout(700);
 }
 if (await card().count()) problems.push("tour did not finish");
+// the "Step x of y" counter must count up by one and end on y of y
+const [lastX, lastY] = counters.at(-1) ?? [0, 0];
+if (lastX !== lastY) problems.push(`tutorial counter ended on "Step ${lastX} of ${lastY}"`);
+if (counters.some(([x, y], i) => x > y || (i > 0 && x !== counters[i - 1][0] && x !== counters[i - 1][0] + 1))) problems.push(`tutorial counter jumped: ${counters.map((c) => c.join("/")).join(" ")}`);
+console.log("tutorial counter:", counters.map((c) => c.join("/")).join(" "));
 const state = () => p.evaluate(() => {
   const s = JSON.parse(localStorage.getItem("abk-save-v1")).state;
   return { tour: s.meta.tutorialDone, week: s.player?.week, cash: s.player?.cash, artists: s.player?.artists.length, songs: s.player?.songs.map((x) => `${x.stage}:${x.sessions}`), gold: s.meta.gold, pending: s.player?.pendingEvent ?? null };
@@ -94,7 +104,7 @@ const closeAll = async () => {
   for (let i = 0; i < 6; i++) {
     const dlg = p.locator('[role="dialog"]:not([aria-label^="Tutorial"])');
     if (!(await dlg.count())) return;
-    const btn = dlg.last().getByRole("button", { name: /^(Continue|Start week \d+|Something happened…|Back to the game)$/ });
+    const btn = dlg.last().getByRole("button", { name: /^(Continue|Start week \d+|Something happened…|Back to the game|End it anyway)$/ });
     const x = dlg.last().locator('[data-tour="sheet-close"]');
     if (await btn.count()) await btn.first().click();
     else if (await x.count()) await x.first().click();

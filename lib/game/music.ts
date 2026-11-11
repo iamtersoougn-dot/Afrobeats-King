@@ -6,7 +6,7 @@ import type { Artist, Genre, NpcSong, Player, Song, Trend } from "./types";
 /** Hard cap on any one song's weekly streams, so no combination can run away. */
 export const STREAM_CAP = 2_500_000;
 /** Label's naira per 1,000 streams before the artist's royalty. */
-export const NAIRA_PER_1K = 800;
+export const NAIRA_PER_1K = 1_000;
 
 export function makeTrend(seed: string, from: number, prev?: Genre): Trend {
   const r = rng(seed, "trend", from);

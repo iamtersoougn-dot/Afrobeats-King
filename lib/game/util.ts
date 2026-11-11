@@ -107,3 +107,6 @@ export function deltaChips(d: Deltas): { text: string; tone: Tone }[] {
 }
 
 export const weekLabel = (w: number) => `Week ${((w - 1) % 52) + 1} · Year ${Math.floor((w - 1) / 52) + 1}`;
+
+/** "a" or "an" for a word ("an Indie label", "a Major label") */
+export const aOrAn = (word: string) => (/^[AEIOUaeiou]/.test(word) ? "an" : "a");

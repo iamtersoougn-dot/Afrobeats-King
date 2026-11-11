@@ -11,7 +11,7 @@ import { DAILY_REWARDS } from "@/lib/products";
 import { SEASON_TIERS, XP_PER_TIER, currentSeason, freeReward, premiumReward } from "@/lib/season";
 import { SPONSORED_SONGS, noteAdTap, noteAdView } from "@/lib/sponsors";
 import { useNow } from "@/components/world/useEnv";
-import { Bar, Chip, Empty, Section, Segments } from "../ui";
+import { Bar, Chip, Empty, Fold, JumpBar, Section, Segments } from "../ui";
 
 type Seg = "feed" | "live" | "rewards";
 
@@ -84,13 +84,18 @@ function Feed() {
       )}
       <Section title="Label news">
         <ul className="grid gap-1.5">
-          {p.log.slice(0, 25).map((l, i) => (
-            <li key={i} className="flex gap-2 rounded-xl bg-night-3 px-3 py-2 text-[13px]">
-              <span>{l.icon}</span>
-              <span className="min-w-0 flex-1">{l.text}</span>
-              <span className="shrink-0 text-[11.5px] text-lilac">wk {l.week}</span>
-            </li>
-          ))}
+          <Fold
+            items={p.log.slice(0, 40)}
+            limit={6}
+            more={(n) => `Show ${n} older`}
+            render={(l, i) => (
+              <li key={i} className="flex gap-2 rounded-xl bg-night-3 px-3 py-2 text-[13px]">
+                <span>{l.icon}</span>
+                <span className="min-w-0 flex-1">{l.text}</span>
+                <span className="shrink-0 text-[11.5px] text-lilac">wk {l.week}</span>
+              </li>
+            )}
+          />
         </ul>
       </Section>
     </div>
@@ -258,7 +263,15 @@ function Rewards() {
   const achState = (id: string) => (meta.ach.includes(id) ? "done" : "todo");
   return (
     <div>
-      <Section title="Daily reward">
+      <JumpBar
+        links={[
+          { id: "rw-daily", label: "🎁 Daily" },
+          { id: "rw-quests", label: "✅ Quests" },
+          { id: "rw-pass", label: "🎟️ Tour Pass" },
+          { id: "rw-ach", label: "🏅 Achievements" },
+        ]}
+      />
+      <Section title="Daily reward" id="rw-daily">
         <div className="rounded-2xl bg-night-3 p-3">
           <div className="grid grid-cols-7 gap-1">
             {DAILY_REWARDS.map((g, i) => {
@@ -279,7 +292,7 @@ function Rewards() {
         </div>
       </Section>
 
-      <Section title="Today's quests">
+      <Section title="Today's quests" id="rw-quests">
         <ul className="grid gap-2">
           {sortTasks(qs, (q) => qState(q.id, q.need)).map((q) => {
             const st = qState(q.id, q.need);
@@ -307,7 +320,7 @@ function Rewards() {
         </ul>
       </Section>
 
-      <Section title={season.name} aside={<span className="text-[12px] text-lilac">Tier {tier}/{SEASON_TIERS}</span>}>
+      <Section title={season.name} id="rw-pass" aside={<span className="text-[12px] text-lilac">Tier {tier}/{SEASON_TIERS}</span>}>
         <div className="rounded-2xl bg-night-3 p-3">
           <Bar value=  {((pass.xp % XP_PER_TIER) / XP_PER_TIER) * 100} color="var(--stage)" />
           <p className="mt-1 text-[12px] text-lilac">Earn XP by playing, quests and daily rewards. {pass.premium ? "Premium track unlocked." : "Unlock the premium track in Wallet → Shop."}</p>
@@ -319,7 +332,7 @@ function Rewards() {
                 const st = (t: number) => (pass.free.includes(t) && (!pass.premium || pass.prem.includes(t)) ? 2 : t <= tier ? 0 : 1);
                 return st(a) - st(b) || a - b;
               })
-              .slice(0, 8)
+              .slice(0, 5)
               .map((t) => {
                 const f = freeReward(t);
                 const pr = premiumReward(t);
@@ -351,9 +364,13 @@ function Rewards() {
         </div>
       </Section>
 
-      <Section title="Achievements" aside={<span className="text-[12px] text-lilac">{meta.ach.length}/{ACHIEVEMENTS.length}</span>}>
+      <Section title="Achievements" id="rw-ach" aside={<span className="text-[12px] text-lilac">{meta.ach.length}/{ACHIEVEMENTS.length}</span>}>
         <ul className="grid gap-1.5">
-          {sortTasks(ACHIEVEMENTS, (a) => achState(a.id)).map((a) => {
+          <Fold
+            items={sortTasks(ACHIEVEMENTS, (a) => achState(a.id))}
+            limit={5}
+            more={(n) => `Show ${n} more`}
+            render={(a) => {
             const done = meta.ach.includes(a.id);
             return (
               <li key={a.id} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${done ? "bg-night opacity-70" : "bg-night-3"}`}>
@@ -365,7 +382,8 @@ function Rewards() {
                 <span className={`text-[12px] font-bold ${done ? "text-lagoon" : "text-lilac"}`}>{done ? "✓" : `${a.gold}🪙`}</span>
               </li>
             );
-          })}
+            }}
+          />
         </ul>
       </Section>
       {p.chill && <p className="mt-3 text-[12px] text-lilac">🌿 Chill label: you still earn gold and camp points.</p>}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Tone } from "@/lib/game/types";
 
 export const toneText: Record<Tone, string> = { good: "text-lagoon", bad: "text-okada", neutral: "text-lilac" };
@@ -70,14 +70,45 @@ export function Bar({ value, color = "var(--danfo)" }: { value: number; color?: 
   );
 }
 
-export function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
+export function Section({ title, children, aside, id }: { title: string; children: React.ReactNode; aside?: React.ReactNode; id?: string }) {
   return (
-    <section className="mt-4">
+    <section className="mt-4 scroll-mt-2" id={id}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="font-display text-[14px] font-bold text-paper">{title}</h3>
         {aside}
       </div>
       {children}
     </section>
+  );
+}
+
+/** Shows the first few items with a "Show all" button, so screens stay short. */
+export function Fold<T>({ items, limit, render, more }: { items: T[]; limit: number; render: (t: T, i: number) => React.ReactNode; more: (n: number) => string }) {
+  const [open, setOpen] = useState(false);
+  const shown = open ? items : items.slice(0, limit);
+  return (
+    <>
+      {shown.map(render)}
+      {items.length > limit && (
+        <li className="list-none">
+          <button className="btn btn-ghost mt-1 w-full text-[13.5px]" onClick={() => setOpen(!open)} aria-expanded={open}>
+            {open ? "Show less" : more(items.length - limit)}
+          </button>
+        </li>
+      )}
+    </>
+  );
+}
+
+/** Buttons that jump to sections further down a long screen. */
+export function JumpBar({ links }: { links: { id: string; label: string }[] }) {
+  return (
+    <nav className="mt-3 flex flex-wrap gap-1.5" aria-label="Jump to">
+      {links.map((l) => (
+        <button key={l.id} className="min-h-[40px] rounded-full bg-night-3 px-3 text-[12.5px] font-bold" onClick={() => document.getElementById(l.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+          {l.label}
+        </button>
+      ))}
+    </nav>
   );
 }

@@ -67,7 +67,7 @@ export default function Creation() {
           {preview}
           <label className="grid min-w-0 flex-1 gap-1 text-[13px] font-bold">
             Your name
-            <input className="min-h-[48px] rounded-2xl bg-night-3 px-3 text-[16px] font-normal outline-none" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="e.g. Tersoo" autoFocus />
+            <input className="min-h-[48px] w-full min-w-0 rounded-2xl bg-night-3 px-3 text-[16px] font-normal outline-none" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="e.g. Tersoo" autoFocus />
           </label>
         </div>
         <div className="mt-4">
@@ -113,7 +113,7 @@ export default function Creation() {
       <h1 className="font-display mt-1 text-[24px] font-bold">Your label</h1>
       <label className="mt-3 grid gap-1 text-[13px] font-bold">
         Label name
-        <input className="min-h-[48px] rounded-2xl bg-night-3 px-3 text-[16px] font-normal outline-none" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={24} placeholder={`${name.trim() || "Boss"} Records`} />
+        <input className="min-h-[48px] w-full min-w-0 rounded-2xl bg-night-3 px-3 text-[16px] font-normal outline-none" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={24} placeholder={`${name.trim() || "Boss"} Records`} />
       </label>
       <div className="mt-4 text-[13px] font-bold">How you start</div>
       <div className="mt-1.5 grid gap-2">

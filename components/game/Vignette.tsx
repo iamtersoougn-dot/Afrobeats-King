@@ -14,16 +14,19 @@ export default function Vignette() {
   const v = useGame((s) => s.vignette);
   const p = useGame((s) => s.player);
   const tour = useGame((s) => s.tour);
+  const place = useGame((s) => s.place);
   const close = useGame((s) => s.closeVignette);
   const night = isNight(useLagosHour());
 
+  // inside a place the result shows in the action's own card (PlaceSheet → ResultStrip); this pop-up is only a fallback
+  const inSheet = !!place && v?.place === place;
   useEffect(() => {
-    if (!v) return;
+    if (!v || inSheet) return;
     const t = setTimeout(close, 4200);
     return () => clearTimeout(t);
-  }, [v, close]);
+  }, [v, close, inSheet]);
 
-  if (!v || !p || tour !== null) return null;
+  if (!v || !p || tour !== null || inSheet) return null;
   const act = ACT[v.actionId] ?? { pose: "idle" as const };
   const song = songInProgress(p) ?? latestRelease(p);
   const artist = (song && p.artists.find((a) => a.id === song.artistId)) ?? p.artists[0];
